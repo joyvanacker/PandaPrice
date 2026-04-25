@@ -288,6 +288,17 @@ class MainWindow:
             if p.get("filament_items"):
                 all_filaments.extend(p["filament_items"])
 
+        # Merge dezelfde filamenten (op naam + kleur)
+        merged: dict[tuple[str, str], tuple[str, str, float, float]] = {}
+        for name, color, weight, cost in all_filaments:
+            key = (name, color)
+            if key in merged:
+                _, _, ew, ec = merged[key]
+                merged[key] = (name, color, ew + weight, ec + cost)
+            else:
+                merged[key] = (name, color, weight, cost)
+        merged_list = [(n, c, round(w, 1), round(co, 2)) for n, c, w, co in merged.values()]
+
         hours = int(total_time_min // 60)
         minutes = int(total_time_min % 60)
         time_display = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
@@ -298,7 +309,7 @@ class MainWindow:
             weight_str=f"{total_weight:.1f}g",
             object_name=f"Totaal ({len(real_plates)} plates)",
             thumbnail_data=real_plates[0].get("thumbnail_data", b""),
-            filament_items=all_filaments if all_filaments else None,
+            filament_items=merged_list if merged_list else None,
             details=None,
         )
 
