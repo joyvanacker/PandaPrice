@@ -1,5 +1,5 @@
-; Inno Setup script voor PandaPrice
-; Vereist: Inno Setup 6.x (https://jrsoftware.org/isinfo.php)
+; Inno Setup script for PandaPrice
+; Requires: Inno Setup 6.x (https://jrsoftware.org/isinfo.php)
 
 #define AppName "PandaPrice"
 #define AppVersion "0.2.0"
@@ -27,6 +27,10 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
+; Close running instance before installing
+CloseApplications=force
+CloseApplicationsFilter={#AppExeName}
+RestartApplications=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

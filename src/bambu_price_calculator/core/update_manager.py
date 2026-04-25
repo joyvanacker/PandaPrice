@@ -158,12 +158,26 @@ class UpdateManager:
         return dest_path
 
     def launch_installer(self, installer_path: Path) -> None:
+        """Start the installer with /SILENT flag and close the app.
+
+        Uses a small batch script that waits for the app to exit before
+        launching the installer, preventing file lock issues.
         """
-        Start de installer als losstaand (detached) proces en sluit de app.
-        """
+        import tempfile
+        import time
+
         _logger.info("Installer starten: %s", installer_path)
+
+        # Create a batch script that waits for the app to exit, then runs the installer
+        bat_content = f"""@echo off
+timeout /t 3 /nobreak >nul
+start "" "{installer_path}" /SILENT
+"""
+        bat_path = Path(tempfile.gettempdir()) / "pandaprice_update.bat"
+        bat_path.write_text(bat_content, encoding="utf-8")
+
         subprocess.Popen(
-            [str(installer_path)],
+            ["cmd", "/c", str(bat_path)],
             close_fds=True,
             creationflags=(
                 subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
