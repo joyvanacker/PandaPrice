@@ -2,7 +2,7 @@
 ; Vereist: Inno Setup 6.x (https://jrsoftware.org/isinfo.php)
 
 #define AppName "PandaPrice"
-#define AppVersion "0.1.0"
+#define AppVersion "0.2.0"
 #define AppPublisher "joyvanacker"
 #define AppExeName "PandaPrice.exe"
 

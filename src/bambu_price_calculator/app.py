@@ -73,7 +73,7 @@ class App:
         self._calculator = PriceCalculator()
 
         # 8. UpdateManager
-        self._update_manager = UpdateManager("0.1.0", "joyvanacker", "PandaPrice")
+        self._update_manager = UpdateManager("0.2.0", "joyvanacker", "PandaPrice")
 
         # Laatste berekeningsresultaat (voor herberekening bij instellingswijziging)
         self._last_parse_result: ParseResult | None = None
