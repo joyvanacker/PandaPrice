@@ -57,17 +57,27 @@ class ResultCard(ttk.Frame):
             ).pack(anchor=tk.W)
 
         ttk.Label(
-            info, text=price,
-            font=("Segoe UI", 20, "bold"), foreground=BAMBU_GREEN,
-        ).pack(anchor=tk.W, pady=(2, 0))
+            info, text=f"{time_str}  |  {weight_str}",
+            font=("Segoe UI", 9), foreground=TEXT_SECONDARY,
+        ).pack(anchor=tk.W, pady=(2, 6))
 
         ttk.Label(
-            info, text=f"{time_str}  |  {weight_str}",
-            font=("Segoe UI", 8), foreground=TEXT_SECONDARY,
+            info, text="TOTAALPRIJS",
+            font=("Segoe UI", 10, "bold"), foreground=BAMBU_GREEN,
         ).pack(anchor=tk.W)
+
+        ttk.Label(
+            info, text=price,
+            font=("Segoe UI", 28, "bold"), foreground=BAMBU_GREEN,
+        ).pack(anchor=tk.W, pady=(2, 0))
 
         # Filament breakdown
         if filament_items:
+            ttk.Label(
+                self, text="FILAMENTEN",
+                font=("Segoe UI", 9, "bold"), foreground=TEXT_SECONDARY,
+            ).pack(anchor=tk.W, pady=(8, 4))
+
             fil_frame = ttk.Frame(self)
             fil_frame.pack(fill=tk.X, pady=(6, 0))
 
@@ -75,22 +85,27 @@ class ResultCard(ttk.Frame):
                 row = ttk.Frame(fil_frame)
                 row.pack(fill=tk.X, pady=1)
 
-                canvas = tk.Canvas(row, width=12, height=12, highlightthickness=0, borderwidth=0)
-                canvas.pack(side=tk.LEFT, padx=(0, 6), pady=1)
-                canvas.create_oval(1, 1, 11, 11, fill=color_hex, outline=color_hex)
+                canvas = tk.Canvas(row, width=16, height=16, highlightthickness=0, borderwidth=0)
+                canvas.pack(side=tk.LEFT, padx=(0, 8), pady=1)
+                canvas.create_oval(1, 1, 15, 15, fill=color_hex, outline=color_hex)
 
-                ttk.Label(row, text=name, font=("Segoe UI", 8)).pack(side=tk.LEFT)
+                ttk.Label(row, text=name, font=("Segoe UI", 9)).pack(side=tk.LEFT)
                 ttk.Label(
                     row, text=f"€ {cost:.2f}",
-                    font=("Segoe UI", 8), foreground=BAMBU_GREEN,
+                    font=("Segoe UI", 9), foreground=BAMBU_GREEN,
                 ).pack(side=tk.RIGHT)
                 ttk.Label(
                     row, text=f"{weight:.1f}g",
-                    font=("Segoe UI", 8), foreground=TEXT_SECONDARY,
-                ).pack(side=tk.RIGHT, padx=(0, 8))
+                    font=("Segoe UI", 9), foreground=TEXT_SECONDARY,
+                ).pack(side=tk.RIGHT, padx=(0, 12))
 
-        # Print details (compact, één regel)
+        # Print details
         if details:
+            ttk.Label(
+                self, text="PRINT DETAILS",
+                font=("Segoe UI", 9, "bold"), foreground=TEXT_SECONDARY,
+            ).pack(anchor=tk.W, pady=(8, 4))
+
             detail_parts = [f"{v}" for k, v in details.items()]
             if detail_parts:
                 ttk.Label(
