@@ -307,6 +307,11 @@ class App:
         name = meta.profile_name or f"{meta.brand} {meta.material_type}".strip()
         if "@" in name:
             name = name.split("@")[0].strip()
+        # Strip materiaaltype uit de naam als het er al in staat (bijv. "PolyTerra PLA" → "PolyTerra")
+        if meta.material_type and name.upper().endswith(f" {meta.material_type.upper()}"):
+            name = name[: -len(meta.material_type)].strip()
+        elif meta.material_type and name.upper().startswith(f"{meta.material_type.upper()} "):
+            name = name[len(meta.material_type):].strip()
 
         # Als Bambu Studio al een prijs per kg heeft, maak automatisch aan
         if meta.cost_per_kg > 0:
