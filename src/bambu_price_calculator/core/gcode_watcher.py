@@ -49,6 +49,21 @@ class _GcodeEventHandler(FileSystemEventHandler):
             logger.error("Onverwachte fout bij parsen van %s: %s", filepath, exc)
             return
 
+        # Probeer 3D mesh te parsen voor wireframe, volume en bbox
+        try:
+            from bambu_price_calculator.core.mesh_parser import find_model_file, parse_model_file
+            model_path = find_model_file(filepath)
+            if model_path:
+                mesh = parse_model_file(model_path)
+                if mesh:
+                    result.volume_cm3 = mesh.volume_cm3
+                    result.bbox_mm = mesh.bbox_mm
+                    # Wireframe als primaire thumbnail
+                    if mesh.thumbnail_data:
+                        result.thumbnail_data = mesh.thumbnail_data
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Mesh parsing overgeslagen: %s", exc)
+
         # Probeer bijbehorend 3MF bestand te vinden en metadata te mergen
         try:
             from bambu_price_calculator.core.threemf_parser import (
@@ -61,14 +76,16 @@ class _GcodeEventHandler(FileSystemEventHandler):
             if threemf_path:
                 info = parse_threemf(threemf_path)
                 if info:
-                    result.thumbnail_data = info.thumbnail_data
+                    # 3MF thumbnail als fallback (alleen als wireframe niet beschikbaar)
+                    if not result.thumbnail_data and info.thumbnail_data:
+                        result.thumbnail_data = info.thumbnail_data
                     result.object_name = info.object_name
                     result.printer_model_id = info.printer_model_id
 
-            # Haal modelnaam uit de project-3MF (betere naam dan "Assembly")
+            # Haal modelnaam uit de project-3MF
             project_path = find_project_threemf(filepath)
             if project_path:
-                model_name = extract_model_name(project_path)
+                model_name = extract_model_name(project_path, Path(filepath).name)
                 if model_name:
                     result.object_name = model_name
         except Exception as exc:  # noqa: BLE001
@@ -146,12 +163,11 @@ class GcodeWatcher:
         self.start(path)
 
     def _scan_existing(self, path: str, handler: _GcodeEventHandler) -> None:
-        """Zoek het nieuwste gcode bestand in de map en verwerk het."""
+        """Zoek alle gcode bestanden in de nieuwste session en verwerk ze."""
         import os
 
-        newest_path: str | None = None
-        newest_mtime: float = 0
-
+        # Verzamel alle gcode bestanden met hun mtime
+        gcode_files: list[tuple[float, str]] = []
         try:
             for dirpath, _, filenames in os.walk(path):
                 for name in filenames:
@@ -159,14 +175,24 @@ class GcodeWatcher:
                         full = os.path.join(dirpath, name)
                         try:
                             mt = os.path.getmtime(full)
-                            if mt > newest_mtime:
-                                newest_mtime = mt
-                                newest_path = full
+                            gcode_files.append((mt, full))
                         except OSError:
                             pass
         except OSError:
             return
 
-        if newest_path:
-            logger.info("Initiële scan: verwerk %s", newest_path)
-            handler._handle_gcode_event(newest_path)
+        if not gcode_files:
+            return
+
+        # Sorteer op mtime (nieuwste eerst)
+        gcode_files.sort(reverse=True)
+
+        # Bepaal de session van het nieuwste bestand
+        newest_session = Path(gcode_files[0][1]).parent.parent.name
+
+        # Verwerk alle gcode bestanden in dezelfde session
+        for _, full in gcode_files:
+            session = Path(full).parent.parent.name
+            if session == newest_session:
+                logger.info("Initiële scan: verwerk %s", full)
+                handler._handle_gcode_event(full)

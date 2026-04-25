@@ -305,8 +305,13 @@ class App:
 
         # Gebruik de profielnaam uit de gcode, of maak een beschrijvende naam
         name = meta.profile_name or f"{meta.brand} {meta.material_type}".strip()
-        if meta.color_hex:
-            name = f"{name} ({meta.color_hex})"
+        if "@" in name:
+            name = name.split("@")[0].strip()
+        # Strip materiaaltype uit de naam als het er al in staat (bijv. "PolyTerra PLA" → "PolyTerra")
+        if meta.material_type and name.upper().endswith(f" {meta.material_type.upper()}"):
+            name = name[: -len(meta.material_type)].strip()
+        elif meta.material_type and name.upper().startswith(f"{meta.material_type.upper()} "):
+            name = name[len(meta.material_type):].strip()
 
         # Als Bambu Studio al een prijs per kg heeft, maak automatisch aan
         if meta.cost_per_kg > 0:
@@ -516,12 +521,51 @@ class App:
         filament_breakdown: list[tuple[str, str, float, float]] | None = None,
         parse_result: ParseResult | None = None,
     ) -> None:
-        """Update de MainWindow met het berekeningsresultaat en sla op in history."""
-        self._main_window.update_result(calc_result)
-        if filament_breakdown:
-            self._main_window.update_filament_breakdown(filament_breakdown)
+        """Voeg een result card toe aan de MainWindow en sla op in history."""
+        hours = int(calc_result.print_time_minutes // 60)
+        minutes = int(calc_result.print_time_minutes % 60)
+        time_str = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
+
+        # Bouw details dict
+        details: dict[str, str] = {}
         if parse_result:
-            self._main_window.update_print_details(parse_result)
+            if parse_result.layer_height_mm:
+                details["Laag"] = f"{parse_result.layer_height_mm}mm"
+            if parse_result.infill_pct:
+                details["Infill"] = f"{int(parse_result.infill_pct)}%"
+            if parse_result.total_layers:
+                details["Lagen"] = str(parse_result.total_layers)
+            if parse_result.model_height_mm:
+                details["Hoogte"] = f"{parse_result.model_height_mm}mm"
+            if parse_result.nozzle_diameter_mm:
+                details["Nozzle"] = f"{parse_result.nozzle_diameter_mm}mm"
+            if parse_result.volume_cm3:
+                details["Volume"] = f"{parse_result.volume_cm3} cm³"
+            if parse_result.bbox_mm and any(v > 0 for v in parse_result.bbox_mm):
+                l, b, h = parse_result.bbox_mm
+                details["Afmetingen"] = f"{l}×{b}×{h}mm"
+
+        # Bepaal plate index uit de gcode bestandsnaam (bijv. .13060.1.gcode → plate 1)
+        plate_idx = 0
+        if parse_result and parse_result.filename:
+            parts = parse_result.filename.rsplit(".", 2)
+            if len(parts) >= 3:
+                try:
+                    plate_idx = int(parts[-2])
+                except ValueError:
+                    pass
+
+        self._main_window.add_result_card(
+            session_id=parse_result.session_id if parse_result else "",
+            plate_index=plate_idx,
+            price=f"€ {calc_result.sale_price:.2f}",
+            time_str=time_str,
+            weight_str=f"{calc_result.weight_grams:.1f}g",
+            object_name=parse_result.object_name if parse_result else "",
+            thumbnail_data=parse_result.thumbnail_data if parse_result else b"",
+            filament_items=filament_breakdown,
+            details=details if details else None,
+        )
 
         # Voeg toe aan history
         record = HistoryRecord(
@@ -536,10 +580,6 @@ class App:
 
         # Toon rijke popup als venster verborgen is
         if not self._root.winfo_viewable() and parse_result:
-            hours = int(calc_result.print_time_minutes // 60)
-            minutes = int(calc_result.print_time_minutes % 60)
-            time_str = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
-
             from bambu_price_calculator.ui.toast_popup import ToastPopup
             is_dark = self._main_window._resolve_sv_theme(
                 self._sm.get().theme

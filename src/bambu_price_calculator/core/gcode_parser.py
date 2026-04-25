@@ -28,9 +28,11 @@ class FilamentMeta:
 @dataclass
 class ParseResult:
     filename: str
-    weight_grams: float
-    print_time_minutes: float
-    filament_meta: FilamentMeta | None
+    filepath: str = ""
+    session_id: str = ""
+    weight_grams: float = 0.0
+    print_time_minutes: float = 0.0
+    filament_meta: FilamentMeta | None = None
     filament_metas: list[FilamentMeta] = field(default_factory=list)
     weight_per_filament: list[float] = field(default_factory=list)
     # Print details
@@ -47,6 +49,9 @@ class ParseResult:
     thumbnail_data: bytes = b""
     object_name: str = ""
     printer_model_id: str = ""
+    # Mesh data
+    volume_cm3: float = 0.0
+    bbox_mm: tuple[float, float, float] = (0.0, 0.0, 0.0)
     raw_metadata: dict[str, str] = field(default_factory=dict)
 
 
@@ -153,8 +158,20 @@ class GcodeParser:
         else:
             used_weights = weight_per_filament
 
+        # Session ID: de parent-parent map van de gcode (de session-map)
+        # bijv. "Fri_Apr_24/14_52_04#24992#48" uit .../Metadata/.gcode
+        session_id = ""
+        try:
+            metadata_dir = path.parent  # Metadata/
+            session_dir = metadata_dir.parent  # session map
+            session_id = session_dir.name
+        except Exception:
+            pass
+
         return ParseResult(
             filename=path.name,
+            filepath=str(path),
+            session_id=session_id,
             weight_grams=weight_grams,
             print_time_minutes=print_time_minutes,
             filament_meta=used_metas[0] if used_metas else None,
