@@ -40,7 +40,7 @@ class ResultCard(ttk.Frame):
             try:
                 from PIL import Image, ImageTk
                 img = Image.open(io.BytesIO(thumbnail_data))
-                img.thumbnail((72, 72))
+                img.thumbnail((120, 120))
                 self._photo = ImageTk.PhotoImage(img)
                 ttk.Label(top, image=self._photo).pack(side=tk.LEFT, padx=(0, 10))
             except Exception:

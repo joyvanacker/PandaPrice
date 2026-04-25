@@ -89,7 +89,7 @@ def _parse_xml(xml_data: str) -> MeshInfo | None:
     vol_cm3 = abs(vol) / 6.0 / 1000.0
 
     # Wireframe render
-    thumbnail = _render_wireframe(verts, tris, xs, ys, zs)
+    thumbnail = _render_wireframe(verts, tris, xs, ys, zs, size=300)
 
     return MeshInfo(
         vertices=verts,
@@ -106,40 +106,36 @@ def _render_wireframe(
     xs: list[float], ys: list[float], zs: list[float],
     size: int = 200,
 ) -> bytes:
-    """Render een isometrische wireframe preview als PNG bytes met PIL."""
+    """Render een isometrische 3D preview met gevulde faces en belichting."""
     from PIL import Image, ImageDraw
 
-    # Isometrische projectie (30° elevatie, -45° azimut)
+    # Isometrische projectie
     cos_a, sin_a = math.cos(math.radians(-45)), math.sin(math.radians(-45))
     cos_e, sin_e = math.cos(math.radians(30)), math.sin(math.radians(30))
 
-    # Centreer het model
     cx = (min(xs) + max(xs)) / 2
     cy = (min(ys) + max(ys)) / 2
     cz = (min(zs) + max(zs)) / 2
 
-    def project(x: float, y: float, z: float) -> tuple[float, float]:
-        """Projecteer 3D punt naar 2D isometrisch."""
+    def project(x: float, y: float, z: float) -> tuple[float, float, float]:
         dx, dy, dz = x - cx, y - cy, z - cz
-        # Roteer rond Z-as
         rx = dx * cos_a - dy * sin_a
         ry = dx * sin_a + dy * cos_a
         rz = dz
-        # Projecteer met elevatie
         px = rx
         py = -ry * sin_e - rz * cos_e
-        return px, py
+        depth = ry * cos_e - rz * sin_e  # voor z-sorting
+        return px, py, depth
 
     # Projecteer alle vertices
     projected = [project(v[0], v[1], v[2]) for v in verts]
 
-    # Bereken schaal
     pxs = [p[0] for p in projected]
     pys = [p[1] for p in projected]
     if not pxs or not pys:
         return b""
 
-    margin = 16
+    margin = 12
     usable = size - 2 * margin
     range_x = max(pxs) - min(pxs) or 1
     range_y = max(pys) - min(pys) or 1
@@ -149,31 +145,55 @@ def _render_wireframe(
     off_y = size / 2 - (min(pys) + max(pys)) / 2 * scale
 
     def to_screen(idx: int) -> tuple[int, int]:
-        px, py = projected[idx]
+        px, py, _ = projected[idx]
         return int(px * scale + off_x), int(py * scale + off_y)
 
+    # Lichtrichting (van rechtsboven)
+    light = (0.4, -0.5, 0.7)
+    light_len = math.sqrt(sum(c * c for c in light))
+    light = tuple(c / light_len for c in light)
+
+    # Bereken face normals en depth voor z-sorting
+    face_data: list[tuple[float, list[tuple[int, int]], float]] = []
+    for i1, i2, i3 in tris:
+        v1, v2, v3 = verts[i1], verts[i2], verts[i3]
+        # Normaal via kruisproduct
+        e1 = (v2[0]-v1[0], v2[1]-v1[1], v2[2]-v1[2])
+        e2 = (v3[0]-v1[0], v3[1]-v1[1], v3[2]-v1[2])
+        nx = e1[1]*e2[2] - e1[2]*e2[1]
+        ny = e1[2]*e2[0] - e1[0]*e2[2]
+        nz = e1[0]*e2[1] - e1[1]*e2[0]
+        nl = math.sqrt(nx*nx + ny*ny + nz*nz)
+        if nl < 1e-10:
+            continue
+        nx, ny, nz = nx/nl, ny/nl, nz/nl
+
+        # Belichting
+        dot = nx*light[0] + ny*light[1] + nz*light[2]
+        brightness = max(0.15, min(1.0, 0.3 + 0.7 * abs(dot)))
+
+        # Depth (gemiddelde van geprojecteerde z)
+        depth = (projected[i1][2] + projected[i2][2] + projected[i3][2]) / 3
+
+        pts = [to_screen(i1), to_screen(i2), to_screen(i3)]
+        face_data.append((depth, pts, brightness))
+
+    # Sort: verste eerst (painter's algorithm)
+    face_data.sort(key=lambda f: f[0])
+
     # Render
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    bg = (0, 0, 0, 0)  # transparante achtergrond
+    img = Image.new("RGBA", (size, size), bg)
     draw = ImageDraw.Draw(img)
 
-    # Subsample edges voor performance (max ~3000 unieke edges)
-    edges: set[tuple[int, int]] = set()
-    max_edges = 3000
-    for i1, i2, i3 in tris:
-        for a, b in ((i1, i2), (i2, i3), (i3, i1)):
-            edge = (min(a, b), max(a, b))
-            edges.add(edge)
-            if len(edges) >= max_edges:
-                break
-        if len(edges) >= max_edges:
-            break
-
-    # Teken edges
-    edge_color = (0, 174, 66, 180)  # BAMBU_GREEN met alpha
-    for a, b in edges:
-        p1 = to_screen(a)
-        p2 = to_screen(b)
-        draw.line([p1, p2], fill=edge_color, width=1)
+    # Bambu groen basis: (0, 174, 66)
+    for _, pts, brightness in face_data:
+        r = int(0 * brightness)
+        g = int(174 * brightness)
+        b = int(66 * brightness)
+        fill = (r, g, b, 230)
+        outline = (int(r * 0.6), int(g * 0.6), int(b * 0.6), 255)
+        draw.polygon(pts, fill=fill, outline=outline)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")

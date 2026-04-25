@@ -540,8 +540,19 @@ class App:
                 l, b, h = parse_result.bbox_mm
                 details["Afmetingen"] = f"{l}×{b}×{h}mm"
 
+        # Bepaal plate index uit de gcode bestandsnaam (bijv. .13060.1.gcode → plate 1)
+        plate_idx = 0
+        if parse_result and parse_result.filename:
+            parts = parse_result.filename.rsplit(".", 2)
+            if len(parts) >= 3:
+                try:
+                    plate_idx = int(parts[-2])
+                except ValueError:
+                    pass
+
         self._main_window.add_result_card(
             session_id=parse_result.session_id if parse_result else "",
+            plate_index=plate_idx,
             price=f"€ {calc_result.sale_price:.2f}",
             time_str=time_str,
             weight_str=f"{calc_result.weight_grams:.1f}g",

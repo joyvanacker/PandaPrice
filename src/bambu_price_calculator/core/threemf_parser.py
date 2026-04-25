@@ -121,24 +121,85 @@ def find_project_threemf(gcode_path: str) -> str | None:
     return None
 
 
-def extract_model_name(project_3mf_path: str) -> str:
-    """Extraheer de originele modelnaam uit een project-3MF.
+def extract_model_name(project_3mf_path: str, gcode_filename: str = "") -> str:
+    """Extraheer de modelnaam voor een specifiek gcode bestand uit de project-3MF.
 
-    Zoekt in Metadata/model_settings.config naar het 'name' attribuut
-    van het eerste object. Stript de bestandsextensie.
+    Matcht het gcode_filename met de gcode_file in de plate-configuratie
+    om het juiste object te vinden. Stript de bestandsextensie.
     """
     try:
         with zipfile.ZipFile(project_3mf_path, "r") as zf:
             if "Metadata/model_settings.config" not in zf.namelist():
                 return ""
             tree = ElementTree.fromstring(zf.read("Metadata/model_settings.config"))
+
+            # Bouw object_id → naam mapping
+            obj_names: dict[str, str] = {}
             for obj in tree.iter("object"):
+                obj_id = obj.get("id", "")
                 for meta in obj.iter("metadata"):
                     if meta.get("key") == "name":
-                        name = meta.get("value", "")
-                        if name:
-                            # Strip extensie (.step, .stl, .3mf, etc.)
-                            return Path(name).stem
+                        obj_names[obj_id] = Path(meta.get("value", "")).stem
+                        break
+
+            # Zoek de plate die bij dit gcode bestand hoort
+            if gcode_filename:
+                for plate in tree.iter("plate"):
+                    gcode_file = ""
+                    for meta in plate.iter("metadata"):
+                        if meta.get("key") == "gcode_file":
+                            gcode_file = meta.get("value", "")
+                    if gcode_filename in gcode_file:
+                        # Zoek het object_id van deze plate
+                        for mi in plate.iter("model_instance"):
+                            for meta in mi.iter("metadata"):
+                                if meta.get("key") == "object_id":
+                                    oid = meta.get("value", "")
+                                    if oid in obj_names:
+                                        return obj_names[oid]
+
+            # Fallback: eerste object
+            if obj_names:
+                return next(iter(obj_names.values()))
             return ""
     except Exception:
         return ""
+
+
+def extract_all_plate_names(project_3mf_path: str) -> dict[str, str]:
+    """Extraheer modelnamen voor alle plates uit de project-3MF.
+
+    Returns:
+        Dict van gcode_filename → modelnaam (zonder extensie)
+    """
+    result: dict[str, str] = {}
+    try:
+        with zipfile.ZipFile(project_3mf_path, "r") as zf:
+            if "Metadata/model_settings.config" not in zf.namelist():
+                return result
+            tree = ElementTree.fromstring(zf.read("Metadata/model_settings.config"))
+
+            obj_names: dict[str, str] = {}
+            for obj in tree.iter("object"):
+                obj_id = obj.get("id", "")
+                for meta in obj.iter("metadata"):
+                    if meta.get("key") == "name":
+                        obj_names[obj_id] = Path(meta.get("value", "")).stem
+                        break
+
+            for plate in tree.iter("plate"):
+                gcode_file = ""
+                for meta in plate.iter("metadata"):
+                    if meta.get("key") == "gcode_file":
+                        gcode_file = meta.get("value", "")
+                if gcode_file:
+                    gcode_name = Path(gcode_file).name
+                    for mi in plate.iter("model_instance"):
+                        for meta in mi.iter("metadata"):
+                            if meta.get("key") == "object_id":
+                                oid = meta.get("value", "")
+                                if oid in obj_names:
+                                    result[gcode_name] = obj_names[oid]
+    except Exception:
+        pass
+    return result

@@ -165,84 +165,214 @@ class MainWindow:
         outer = ttk.Frame(self._root, padding=(16, 12, 16, 8))
         outer.pack(fill=tk.BOTH, expand=True)
 
-        # Navigatie (verborgen tot >1 resultaat)
-        nav = ttk.Frame(outer)
-        self._nav_prev = ttk.Button(nav, text="◀", width=3, style="Toolbutton", command=self._prev_result)
-        self._nav_prev.pack(side=tk.LEFT)
-        self._nav_label = ttk.Label(nav, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
-        self._nav_label.pack(side=tk.LEFT, padx=8)
-        self._nav_next = ttk.Button(nav, text="▶", width=3, style="Toolbutton", command=self._next_result)
-        self._nav_next.pack(side=tk.LEFT)
-        self._nav_frame = nav
+        # Instance navigatie (verborgen tot >1 instance)
+        inst_nav = ttk.Frame(outer)
+        self._inst_prev = ttk.Button(inst_nav, text="◀", width=3, style="Toolbutton", command=self._prev_instance)
+        self._inst_prev.pack(side=tk.LEFT)
+        self._inst_label = ttk.Label(inst_nav, text="", font=("Segoe UI", 9), foreground=TEXT_SECONDARY)
+        self._inst_label.pack(side=tk.LEFT, padx=8)
+        self._inst_next = ttk.Button(inst_nav, text="▶", width=3, style="Toolbutton", command=self._next_instance)
+        self._inst_next.pack(side=tk.LEFT)
+        self._inst_nav = inst_nav
 
-        # Card container
+        # Card container (toont 1 plate card)
         self._card_container = ttk.Frame(outer)
         self._card_container.pack(fill=tk.BOTH, expand=True)
+
+        # Plate navigatie (verborgen tot >1 plate)
+        plate_nav = ttk.Frame(outer)
+        self._plate_prev = ttk.Button(plate_nav, text="◀", width=3, style="Toolbutton", command=self._prev_plate)
+        self._plate_prev.pack(side=tk.LEFT)
+        self._plate_label = ttk.Label(plate_nav, text="", font=("Segoe UI", 8), foreground=TEXT_SECONDARY)
+        self._plate_label.pack(side=tk.LEFT, padx=8)
+        self._plate_next = ttk.Button(plate_nav, text="▶", width=3, style="Toolbutton", command=self._next_plate)
+        self._plate_next.pack(side=tk.LEFT)
+        self._plate_nav = plate_nav
 
         self._placeholder = ttk.Label(
             self._card_container, text="Wachten op G-code...",
             font=("Segoe UI", 10), foreground=TEXT_SECONDARY)
         self._placeholder.pack(anchor=tk.CENTER, pady=40)
 
-        self._results: dict[str, dict] = {}
-        self._result_order: list[str] = []
-        self._current_index: int = 0
+        # Data: session_id → list of plate dicts (index 0 = totaal)
+        self._sessions: dict[str, list[dict]] = {}
+        self._session_order: list[str] = []
+        self._inst_index: int = 0
+        self._plate_index: int = 0
 
         # Statusbar
         self._statusbar = ttk.Label(
             self._root, text="", style="Status.TLabel", anchor=tk.W, padding=(16, 4))
         self._statusbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-    def add_result_card(self, session_id: str = "", **kwargs) -> None:
-        """Voeg toe of update een resultaat per session_id."""
+    def add_result_card(self, session_id: str = "", plate_index: int = 0, **kwargs) -> None:
+        """Voeg een plate-resultaat toe aan een session. Herberekent het totaal."""
         if self._placeholder:
             self._placeholder.destroy()
             self._placeholder = None
 
-        key = session_id or f"_anon_{len(self._results)}"
+        key = session_id or f"_anon_{len(self._sessions)}"
 
-        if key in self._results:
-            self._results[key] = kwargs
-            self._result_order.remove(key)
-        else:
-            self._results[key] = kwargs
+        if key not in self._sessions:
+            self._sessions[key] = [{}]  # index 0 = totaal placeholder
+            self._session_order.insert(0, key)
+        elif key in self._session_order:
+            self._session_order.remove(key)
+            self._session_order.insert(0, key)
 
-        self._result_order.insert(0, key)
+        # Zorg dat de lijst groot genoeg is (plate_index + 1 voor plates, +1 voor totaal)
+        plates = self._sessions[key]
+        needed = plate_index + 2  # +1 voor totaal op index 0, +1 voor deze plate
+        while len(plates) < needed:
+            plates.append({})
 
-        while len(self._result_order) > 20:
-            self._results.pop(self._result_order.pop(), None)
+        # Sla plate data op (index 0 = totaal, index 1+ = plates)
+        plates[plate_index + 1] = kwargs
 
-        self._current_index = 0
-        self._show_current_card()
+        # Herbereken totaal
+        self._recalc_total(key)
 
-    def _show_current_card(self) -> None:
+        # Beperk sessions
+        while len(self._session_order) > 20:
+            old = self._session_order.pop()
+            self._sessions.pop(old, None)
+
+        self._inst_index = 0
+        self._plate_index = 0
+        self._show_current()
+
+    def _recalc_total(self, session_id: str) -> None:
+        """Herbereken het totaal van alle plates in een session."""
+        plates = self._sessions[session_id]
+        real_plates = [p for p in plates[1:] if p]  # skip index 0 (totaal) en lege
+
+        if len(real_plates) <= 1:
+            # Maar 1 plate: totaal = die plate
+            if real_plates:
+                plates[0] = dict(real_plates[0])
+            return
+
+        # Meerdere plates: som van prijs en tijd
+        total_price = 0.0
+        total_weight = 0.0
+        total_time_min = 0.0
+        all_filaments: list[tuple[str, str, float, float]] = []
+
+        for p in real_plates:
+            # Parse prijs uit string "€ 1.23"
+            price_str = p.get("price", "€ 0.00")
+            try:
+                total_price += float(price_str.replace("€", "").strip())
+            except ValueError:
+                pass
+            # Parse gewicht
+            weight_str = p.get("weight_str", "0g")
+            try:
+                total_weight += float(weight_str.replace("g", "").strip())
+            except ValueError:
+                pass
+            # Parse tijd
+            time_str = p.get("time_str", "0m")
+            try:
+                parts = time_str.replace("u", "h ").replace("m", "").split()
+                mins = 0.0
+                for part in parts:
+                    if "h" in part:
+                        mins += float(part.replace("h", "")) * 60
+                    else:
+                        mins += float(part)
+                total_time_min += mins
+            except ValueError:
+                pass
+            # Filamenten
+            if p.get("filament_items"):
+                all_filaments.extend(p["filament_items"])
+
+        hours = int(total_time_min // 60)
+        minutes = int(total_time_min % 60)
+        time_display = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
+
+        plates[0] = dict(
+            price=f"€ {total_price:.2f}",
+            time_str=time_display,
+            weight_str=f"{total_weight:.1f}g",
+            object_name=f"Totaal ({len(real_plates)} plates)",
+            thumbnail_data=real_plates[0].get("thumbnail_data", b""),
+            filament_items=all_filaments if all_filaments else None,
+            details=None,
+        )
+
+    def _show_current(self) -> None:
+        """Toon de huidige instance + plate."""
         from bambu_price_calculator.ui.result_card import ResultCard
         for w in self._card_container.winfo_children():
             w.destroy()
-        if not self._result_order:
+
+        if not self._session_order:
             return
 
-        data = self._results[self._result_order[self._current_index]]
-        ResultCard(self._card_container, **data).pack(fill=tk.X)
+        session_id = self._session_order[self._inst_index]
+        plates = self._sessions[session_id]
+        real_plates = [p for p in plates if p]
 
-        total = len(self._result_order)
-        if total > 1:
-            self._nav_frame.pack(fill=tk.X, pady=(0, 8), before=self._card_container)
-            self._nav_label.config(text=f"{self._current_index + 1} / {total}")
-            self._nav_prev.config(state=tk.NORMAL if self._current_index < total - 1 else tk.DISABLED)
-            self._nav_next.config(state=tk.NORMAL if self._current_index > 0 else tk.DISABLED)
+        if not real_plates:
+            return
+
+        # Clamp plate index
+        if self._plate_index >= len(real_plates):
+            self._plate_index = 0
+
+        data = real_plates[self._plate_index]
+        if data:
+            ResultCard(self._card_container, **data).pack(fill=tk.X)
+
+        # Instance navigatie
+        total_inst = len(self._session_order)
+        if total_inst > 1:
+            self._inst_nav.pack(fill=tk.X, pady=(0, 6), before=self._card_container)
+            self._inst_label.config(text=f"Instance {self._inst_index + 1} / {total_inst}")
+            self._inst_prev.config(state=tk.NORMAL if self._inst_index < total_inst - 1 else tk.DISABLED)
+            self._inst_next.config(state=tk.NORMAL if self._inst_index > 0 else tk.DISABLED)
         else:
-            self._nav_frame.pack_forget()
+            self._inst_nav.pack_forget()
 
-    def _prev_result(self) -> None:
-        if self._current_index < len(self._result_order) - 1:
-            self._current_index += 1
-            self._show_current_card()
+        # Plate navigatie (alleen als >1 plate, dwz totaal + minstens 2 echte plates)
+        num_real = len(real_plates)
+        if num_real > 2:  # totaal + 2+ plates
+            self._plate_nav.pack(fill=tk.X, pady=(6, 0))
+            if self._plate_index == 0:
+                label = "Totaal"
+            else:
+                label = f"Plate {self._plate_index}"
+            self._plate_label.config(text=f"{label}  ({self._plate_index + 1}/{num_real})")
+            self._plate_prev.config(state=tk.NORMAL if self._plate_index > 0 else tk.DISABLED)
+            self._plate_next.config(state=tk.NORMAL if self._plate_index < num_real - 1 else tk.DISABLED)
+        else:
+            self._plate_nav.pack_forget()
 
-    def _next_result(self) -> None:
-        if self._current_index > 0:
-            self._current_index -= 1
-            self._show_current_card()
+    def _prev_instance(self) -> None:
+        if self._inst_index < len(self._session_order) - 1:
+            self._inst_index += 1
+            self._plate_index = 0
+            self._show_current()
+
+    def _next_instance(self) -> None:
+        if self._inst_index > 0:
+            self._inst_index -= 1
+            self._plate_index = 0
+            self._show_current()
+
+    def _prev_plate(self) -> None:
+        if self._plate_index > 0:
+            self._plate_index -= 1
+            self._show_current()
+
+    def _next_plate(self) -> None:
+        session_id = self._session_order[self._inst_index]
+        plates = [p for p in self._sessions[session_id] if p]
+        if self._plate_index < len(plates) - 1:
+            self._plate_index += 1
+            self._show_current()
 
     def set_status(self, text: str, is_error: bool = False) -> None:
         if is_error:
