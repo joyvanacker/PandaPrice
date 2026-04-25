@@ -516,12 +516,34 @@ class App:
         filament_breakdown: list[tuple[str, str, float, float]] | None = None,
         parse_result: ParseResult | None = None,
     ) -> None:
-        """Update de MainWindow met het berekeningsresultaat en sla op in history."""
-        self._main_window.update_result(calc_result)
-        if filament_breakdown:
-            self._main_window.update_filament_breakdown(filament_breakdown)
+        """Voeg een result card toe aan de MainWindow en sla op in history."""
+        hours = int(calc_result.print_time_minutes // 60)
+        minutes = int(calc_result.print_time_minutes % 60)
+        time_str = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
+
+        # Bouw details dict
+        details: dict[str, str] = {}
         if parse_result:
-            self._main_window.update_print_details(parse_result)
+            if parse_result.layer_height_mm:
+                details["Laag"] = f"{parse_result.layer_height_mm}mm"
+            if parse_result.infill_pct:
+                details["Infill"] = f"{int(parse_result.infill_pct)}%"
+            if parse_result.total_layers:
+                details["Lagen"] = str(parse_result.total_layers)
+            if parse_result.model_height_mm:
+                details["Hoogte"] = f"{parse_result.model_height_mm}mm"
+            if parse_result.nozzle_diameter_mm:
+                details["Nozzle"] = f"{parse_result.nozzle_diameter_mm}mm"
+
+        self._main_window.add_result_card(
+            price=f"€ {calc_result.sale_price:.2f}",
+            time_str=time_str,
+            weight_str=f"{calc_result.weight_grams:.1f}g",
+            object_name=parse_result.object_name if parse_result else "",
+            thumbnail_data=parse_result.thumbnail_data if parse_result else b"",
+            filament_items=filament_breakdown,
+            details=details if details else None,
+        )
 
         # Voeg toe aan history
         record = HistoryRecord(
@@ -536,10 +558,6 @@ class App:
 
         # Toon rijke popup als venster verborgen is
         if not self._root.winfo_viewable() and parse_result:
-            hours = int(calc_result.print_time_minutes // 60)
-            minutes = int(calc_result.print_time_minutes % 60)
-            time_str = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
-
             from bambu_price_calculator.ui.toast_popup import ToastPopup
             is_dark = self._main_window._resolve_sv_theme(
                 self._sm.get().theme

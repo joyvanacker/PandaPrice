@@ -311,87 +311,102 @@ class MainWindow:
         ttk.Separator(self._root, orient=tk.HORIZONTAL).pack(fill=tk.X)
 
     def _build_ui(self) -> None:
-        # Hoofdcontainer met padding
-        outer = ttk.Frame(self._root, padding=(16, 12, 16, 8))
-        outer.pack(fill=tk.BOTH, expand=True)
+        # Scrollbare container voor result cards
+        container = ttk.Frame(self._root)
+        container.pack(fill=tk.BOTH, expand=True)
 
-        self._build_result_section(outer)
-        self._build_filament_section(outer)
-        self._build_details_section(outer)
-        self._build_statusbar()
+        canvas = tk.Canvas(container, highlightthickness=0, borderwidth=0)
+        scrollbar = ttk.Scrollbar(container, orient=tk.VERTICAL, command=canvas.yview)
+        self._cards_frame = ttk.Frame(canvas, padding=(16, 8, 16, 8))
 
-    def _build_result_section(self, parent: ttk.Frame) -> None:
-        """Prominente resultaat-card met thumbnail en prijs."""
-        frame = ttk.Frame(parent)
-        frame.pack(fill=tk.X, pady=(0, 12))
-
-        # Bovenste rij: thumbnail links, prijs rechts
-        top_row = ttk.Frame(frame)
-        top_row.pack(fill=tk.X, pady=(0, 6))
-
-        # Thumbnail placeholder (links)
-        self._thumb_label = ttk.Label(top_row, text="", style="Info.TLabel")
-        self._thumb_label.pack(side=tk.LEFT, padx=(0, 12))
-        self._thumb_photo = None  # bewaar referentie
-
-        # Prijs + info (rechts)
-        price_frame = ttk.Frame(top_row)
-        price_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        # Object naam
-        self._object_name_label = ttk.Label(
-            price_frame, text="", style="Filename.TLabel"
+        self._cards_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
         )
-        self._object_name_label.pack(anchor=tk.W)
+        canvas.create_window((0, 0), window=self._cards_frame, anchor=tk.NW)
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Gewicht + Tijd
-        self._weight_time_label = ttk.Label(price_frame, text="", style="Info.TLabel")
-        self._weight_time_label.pack(anchor=tk.W, pady=(2, 6))
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        ttk.Label(
-            price_frame, text="TOTAALPRIJS", style="PriceHeader.TLabel"
-        ).pack(anchor=tk.W)
+        # Mousewheel scroll
+        def _on_mousewheel(event: tk.Event) -> None:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-        self._price_label = ttk.Label(
-            price_frame, text="€ 0.00", style="Price.TLabel"
-        )
-        self._price_label.pack(anchor=tk.W, pady=(2, 0))
-
-    def _build_filament_section(self, parent: ttk.Frame) -> None:
-        """Filament breakdown sectie met kleurblokjes."""
-        # Sectie header
-        ttk.Label(
-            parent, text="FILAMENTEN", style="Section.TLabel"
-        ).pack(anchor=tk.W, pady=(0, 6))
-
-        self._filament_frame = ttk.Frame(parent)
-        self._filament_frame.pack(fill=tk.X, pady=(0, 12))
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        self._canvas = canvas
 
         # Placeholder
-        self._filament_placeholder = ttk.Label(
-            self._filament_frame,
-            text="Nog geen filamenten gedetecteerd",
-            style="Info.TLabel",
+        self._placeholder = ttk.Label(
+            self._cards_frame,
+            text="Wachten op G-code...",
+            font=("Segoe UI", 10), foreground=TEXT_SECONDARY,
         )
-        self._filament_placeholder.pack(anchor=tk.W)
+        self._placeholder.pack(anchor=tk.W, pady=20)
 
-    def _build_details_section(self, parent: ttk.Frame) -> None:
-        """Compacte print details sectie."""
-        ttk.Label(
-            parent, text="PRINT DETAILS", style="Section.TLabel"
-        ).pack(anchor=tk.W, pady=(0, 6))
+        # Max cards bewaren
+        self._max_cards = 10
+        self._card_widgets: list[tk.Widget] = []
 
-        self._details_frame = ttk.Frame(parent)
-        self._details_frame.pack(fill=tk.X, pady=(0, 12))
-
-        self._details_placeholder = ttk.Label(
-            self._details_frame,
-            text="Nog geen printgegevens",
-            style="Info.TLabel",
-        )
-        self._details_placeholder.pack(anchor=tk.W)
+        self._build_statusbar()
 
     def _build_statusbar(self) -> None:
+        self._statusbar = ttk.Label(
+            self._root,
+            text="",
+            style="Status.TLabel",
+            anchor=tk.W,
+            padding=(16, 4),
+        )
+        self._statusbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def add_result_card(
+        self,
+        price: str,
+        time_str: str,
+        weight_str: str,
+        object_name: str = "",
+        thumbnail_data: bytes = b"",
+        filament_items: list[tuple[str, str, float, float]] | None = None,
+        details: dict[str, str] | None = None,
+    ) -> None:
+        """Voeg een nieuwe result card toe bovenaan de lijst."""
+        from bambu_price_calculator.ui.result_card import ResultCard
+
+        # Verwijder placeholder
+        if self._placeholder:
+            self._placeholder.destroy()
+            self._placeholder = None
+
+        card = ResultCard(
+            self._cards_frame,
+            price=price,
+            time_str=time_str,
+            weight_str=weight_str,
+            object_name=object_name,
+            thumbnail_data=thumbnail_data,
+            filament_items=filament_items,
+            details=details,
+        )
+
+        # Voeg bovenaan toe
+        card.pack(fill=tk.X, pady=(0, 8), before=self._card_widgets[0] if self._card_widgets else None)
+
+        # Separator na de card
+        sep = ttk.Separator(self._cards_frame, orient=tk.HORIZONTAL)
+        sep.pack(fill=tk.X, pady=(0, 8), before=self._card_widgets[0] if self._card_widgets else None)
+
+        # Bewaar referenties (card + separator)
+        self._card_widgets.insert(0, sep)
+        self._card_widgets.insert(0, card)
+
+        # Beperk tot max cards
+        while len(self._card_widgets) > self._max_cards * 2:
+            old = self._card_widgets.pop()
+            old.destroy()
+
+        # Scroll naar boven
+        self._canvas.yview_moveto(0)
         self._statusbar = ttk.Label(
             self._root,
             text="",
@@ -404,123 +419,6 @@ class MainWindow:
     # ------------------------------------------------------------------
     # Publieke methoden
     # ------------------------------------------------------------------
-
-    def update_result(self, result: CalculationResult) -> None:
-        hours = int(result.print_time_minutes // 60)
-        minutes = int(result.print_time_minutes % 60)
-        time_str = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
-        self._weight_time_label.config(
-            text=f"{time_str}   |   {result.weight_grams:.1f}g"
-        )
-        self._price_label.config(text=f"€ {result.sale_price:.2f}")
-
-    def update_filament_breakdown(
-        self,
-        items: list[tuple[str, str, float, float]],
-    ) -> None:
-        """Toon per filament: naam, kleur, gewicht en kosten."""
-        for widget in self._filament_frame.winfo_children():
-            widget.destroy()
-
-        if not items:
-            ttk.Label(
-                self._filament_frame,
-                text="Nog geen filamenten gedetecteerd",
-                style="Info.TLabel",
-            ).pack(anchor=tk.W)
-            return
-
-        for name, color_hex, weight, cost in items:
-            row = ttk.Frame(self._filament_frame)
-            row.pack(fill=tk.X, pady=2)
-
-            # Kleurblokje — groter en afgerond
-            canvas = tk.Canvas(
-                row, width=16, height=16,
-                highlightthickness=0, borderwidth=0,
-            )
-            canvas.pack(side=tk.LEFT, padx=(0, 8), pady=1)
-            # Rond vierkant simuleren
-            canvas.create_oval(1, 1, 15, 15, fill=color_hex, outline=color_hex)
-
-            # Naam
-            ttk.Label(
-                row, text=name, style="Filament.TLabel"
-            ).pack(side=tk.LEFT)
-
-            # Kosten rechts
-            ttk.Label(
-                row,
-                text=f"€ {cost:.2f}",
-                style="Filament.TLabel",
-                foreground=BAMBU_GREEN,
-            ).pack(side=tk.RIGHT)
-
-            # Gewicht rechts van naam
-            ttk.Label(
-                row,
-                text=f"{weight:.1f}g",
-                style="Info.TLabel",
-            ).pack(side=tk.RIGHT, padx=(0, 12))
-
-    def update_print_details(self, result: "ParseResult") -> None:
-        """Toon compacte print details + thumbnail + objectnaam."""
-        # Thumbnail
-        if result.thumbnail_data:
-            try:
-                from PIL import Image, ImageTk
-                import io
-                img = Image.open(io.BytesIO(result.thumbnail_data))
-                img.thumbnail((100, 100))
-                self._thumb_photo = ImageTk.PhotoImage(img)
-                self._thumb_label.config(image=self._thumb_photo, text="")
-            except Exception:
-                self._thumb_label.config(image="", text="")
-        else:
-            self._thumb_label.config(image="", text="")
-
-        # Object naam
-        self._object_name_label.config(text=result.object_name or "")
-
-        # Details grid
-        for widget in self._details_frame.winfo_children():
-            widget.destroy()
-
-        grid = ttk.Frame(self._details_frame)
-        grid.pack(fill=tk.X)
-        grid.columnconfigure(1, weight=1)
-
-        items = []
-        if result.layer_height_mm:
-            items.append(("Laaghoogte", f"{result.layer_height_mm}mm"))
-        if result.nozzle_diameter_mm:
-            items.append(("Nozzle", f"{result.nozzle_diameter_mm}mm"))
-        if result.total_layers:
-            items.append(("Lagen", str(result.total_layers)))
-        if result.model_height_mm:
-            items.append(("Hoogte", f"{result.model_height_mm}mm"))
-        if result.infill_pct:
-            items.append(("Infill", f"{int(result.infill_pct)}%"))
-        if result.print_profile:
-            items.append(("Profiel", result.print_profile))
-        if result.bed_type:
-            items.append(("Bed", result.bed_type))
-
-        flags = []
-        if result.has_support:
-            flags.append("Support")
-        if result.has_prime_tower:
-            flags.append("Prime Tower")
-        if flags:
-            items.append(("Opties", ", ".join(flags)))
-
-        for row, (label, value) in enumerate(items):
-            ttk.Label(grid, text=label, style="Info.TLabel").grid(
-                row=row, column=0, sticky=tk.W, pady=1
-            )
-            ttk.Label(grid, text=value, font=("Segoe UI", 9)).grid(
-                row=row, column=1, sticky=tk.E, pady=1
-            )
 
     def set_status(self, text: str, is_error: bool = False) -> None:
         if is_error:
