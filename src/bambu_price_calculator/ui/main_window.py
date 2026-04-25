@@ -329,13 +329,15 @@ class MainWindow:
         if not real_plates:
             return
 
-        # Clamp plate index
         if self._plate_index >= len(real_plates):
             self._plate_index = 0
 
         data = real_plates[self._plate_index]
         if data:
-            ResultCard(self._card_container, **data).pack(fill=tk.X)
+            card = ResultCard(self._card_container, **data)
+            card.pack(fill=tk.X)
+            # Bewaar referentie naar de card zodat _photo niet GC'd wordt
+            self._current_card = card
 
         # Instance navigatie
         total_inst = len(self._session_order)
