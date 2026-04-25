@@ -28,11 +28,25 @@ class FilamentMeta:
 @dataclass
 class ParseResult:
     filename: str
-    weight_grams: float          # totaal gewicht (som van alle filamenten)
+    weight_grams: float
     print_time_minutes: float
-    filament_meta: FilamentMeta | None       # eerste filament (backward compat)
-    filament_metas: list[FilamentMeta] = field(default_factory=list)  # alle filamenten
-    weight_per_filament: list[float] = field(default_factory=list)    # gewicht per filament
+    filament_meta: FilamentMeta | None
+    filament_metas: list[FilamentMeta] = field(default_factory=list)
+    weight_per_filament: list[float] = field(default_factory=list)
+    # Print details
+    layer_height_mm: float = 0.0
+    total_layers: int = 0
+    model_height_mm: float = 0.0
+    nozzle_diameter_mm: float = 0.0
+    infill_pct: float = 0.0
+    print_profile: str = ""
+    bed_type: str = ""
+    has_support: bool = False
+    has_prime_tower: bool = False
+    # 3MF metadata
+    thumbnail_data: bytes = b""
+    object_name: str = ""
+    printer_model_id: str = ""
     raw_metadata: dict[str, str] = field(default_factory=dict)
 
 
@@ -146,6 +160,7 @@ class GcodeParser:
             filament_meta=used_metas[0] if used_metas else None,
             filament_metas=used_metas,
             weight_per_filament=used_weights,
+            **self._extract_print_details(lines, raw_metadata),
             raw_metadata=raw_metadata,
         )
 
@@ -321,3 +336,45 @@ class GcodeParser:
             ))
 
         return metas
+
+    def _extract_print_details(
+        self, lines: list[str], raw: dict[str, str]
+    ) -> dict:
+        """Extraheert aanvullende printdetails uit de gcode-metadata."""
+        details: dict = {}
+
+        patterns = {
+            "layer_height_mm": (re.compile(r";\s*layer_height\s*=\s*([\d.]+)"), float),
+            "total_layers": (re.compile(r";\s*total layer number\s*[=:]\s*(\d+)"), int),
+            "model_height_mm": (re.compile(r";\s*max_z_height\s*[=:]\s*([\d.]+)"), float),
+            "nozzle_diameter_mm": (re.compile(r";\s*nozzle_diameter\s*=\s*([\d.]+)"), float),
+            "infill_pct": (re.compile(r";\s*sparse_infill_density\s*=\s*([\d.]+)"), float),
+            "print_profile": (re.compile(r";\s*print_settings_id\s*=\s*(.+)"), str),
+            "bed_type": (re.compile(r";\s*curr_bed_type\s*=\s*(.+)"), str),
+        }
+
+        bool_patterns = {
+            "has_support": re.compile(r";\s*enable_support\s*=\s*(\d)"),
+            "has_prime_tower": re.compile(r";\s*enable_prime_tower\s*=\s*(\d)"),
+        }
+
+        for line in lines:
+            for key, (pattern, conv) in patterns.items():
+                if key not in details:
+                    m = pattern.search(line)
+                    if m:
+                        val = m.group(1).strip().strip('"')
+                        raw[key] = val
+                        try:
+                            details[key] = conv(val)
+                        except (ValueError, TypeError):
+                            pass
+
+            for key, pattern in bool_patterns.items():
+                if key not in details:
+                    m = pattern.search(line)
+                    if m:
+                        details[key] = m.group(1).strip() == "1"
+                        raw[key] = m.group(1).strip()
+
+        return details

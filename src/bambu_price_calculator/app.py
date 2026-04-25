@@ -1,4 +1,4 @@
-"""App — Hoofd-applicatieklasse voor de Bambu Price Calculator.
+"""App — Hoofd-applicatieklasse voor PandaPrice.
 
 Initialiseert en verbindt alle componenten: SettingsManager, I18nManager,
 GcodeWatcher, PriceCalculator, UpdateManager, MainWindow en TrayIcon.
@@ -37,6 +37,15 @@ class App:
     """Hoofd-applicatieklasse die alle componenten initialiseert en verbindt."""
 
     def __init__(self) -> None:
+        # Windows taakbalk: stel AppUserModelID in zodat ons icoon getoond wordt
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                "joyvanacker.PandaPrice.app.1"
+            )
+        except Exception:
+            pass
+
         # 1. SettingsManager
         self._sm = SettingsManager()
 
@@ -89,16 +98,20 @@ class App:
         self._watcher.on_error = self._on_watcher_error
 
         # MainWindow callbacks
-        self._main_window.on_toggle_watch = self._toggle_watch
         self._main_window.on_open_settings = self._open_settings
         self._main_window.on_open_filaments = self._open_filaments
         self._main_window.on_open_history = self._open_history
         self._main_window.on_check_update = self._check_update
-        self._main_window.on_settings_changed = self._on_settings_changed
+        self._main_window.on_about = self._open_about
         self._main_window.on_quit = self._quit
 
         # TrayIcon callbacks
         self._tray.on_show = self._show_window
+        self._tray.on_open_settings = self._open_settings
+        self._tray.on_open_filaments = self._open_filaments
+        self._tray.on_open_history = self._open_history
+        self._tray.on_check_update = self._check_update
+        self._tray.on_about = self._open_about
         self._tray.on_quit = self._quit
 
     # ------------------------------------------------------------------
@@ -107,29 +120,24 @@ class App:
 
     def run(self) -> None:
         """Start de applicatie: tray, watcher, update check en event loop."""
-        # Start tray-icoon
         self._tray.start()
 
-        # Start GcodeWatcher als pad geconfigureerd is
+        # Start GcodeWatcher automatisch als pad geconfigureerd is
         settings = self._sm.get()
         if settings.gcode_watch_path:
             self._watcher.start(settings.gcode_watch_path)
             self._watcher_active = True
             self._main_window.set_watch_active(True)
-            self._main_window.set_status(f"Bewaking actief: {settings.gcode_watch_path}")
 
-        # Start update check asynchroon
         threading.Thread(
             target=self._async_check_update,
             daemon=True,
             name="UpdateCheckThread",
         ).start()
 
-        # Start achtergrondthread voor systeemthema-detectie (taak 11.2)
         if settings.theme == "system":
             self._start_theme_watcher()
 
-        # Start Tkinter event loop
         self._root.mainloop()
 
     # ------------------------------------------------------------------
@@ -215,13 +223,11 @@ class App:
         # Bereken totaalprijs: som van kosten per filament + bouw breakdown
         total_filament_cost = 0.0
         filament_breakdown: list[tuple[str, str, float, float]] = []
-        used_weights: list[float] = []
 
         for i, profile in enumerate(matched_profiles):
             weight = weights[i] if i < len(weights) else 0.0
             if weight <= 0:
                 continue
-            used_weights.append(weight)
             prijs_per_gram = profile.purchase_price_eur / profile.spool_weight_grams
             slot_cost = weight * prijs_per_gram * (1 + settings.filament_margin_pct / 100)
             total_filament_cost += slot_cost
@@ -233,10 +239,38 @@ class App:
             ))
 
         uren = result.print_time_minutes / 60
-        sale_price = round(
-            (uren * settings.cost_per_hour + total_filament_cost) * (1 + settings.profit_margin_pct / 100),
-            2,
-        )
+
+        if settings.use_advanced_pricing:
+            # Geavanceerde prijsberekening
+            # Machinekosten per uur
+            energy_per_hour = (settings.energy_watt / 1000) * settings.energy_price_kwh
+            depreciation_per_hour = (
+                settings.machine_price / settings.machine_lifespan_hours
+                if settings.machine_lifespan_hours > 0 else 0
+            )
+            machine_cost_per_hour = energy_per_hour + depreciation_per_hour + settings.maintenance_per_hour
+            machine_cost = uren * machine_cost_per_hour
+
+            # Arbeidskosten
+            labor_hours = (settings.prep_time_min + settings.post_time_min) / 60
+            labor_cost = labor_hours * settings.labor_rate
+
+            # Subtotaal
+            subtotal = machine_cost + total_filament_cost + labor_cost + settings.setup_cost
+
+            # Faalpercentage correctie
+            if settings.failure_rate_pct > 0:
+                subtotal = subtotal / (1 - settings.failure_rate_pct / 100)
+
+            # Winstmarge
+            sale_price = round(subtotal * (1 + settings.profit_margin_pct / 100), 2)
+        else:
+            # Eenvoudige prijsberekening
+            sale_price = round(
+                (uren * settings.cost_per_hour + total_filament_cost)
+                * (1 + settings.profit_margin_pct / 100),
+                2,
+            )
 
         # Maak een CalculationResult met het eerste profiel als referentie
         from bambu_price_calculator.core.price_calculator import CalculationResult
@@ -254,7 +288,7 @@ class App:
             sale_price=sale_price,
         )
 
-        self._root.after(0, lambda: self._update_ui(calc_result, filament_breakdown))
+        self._root.after(0, lambda: self._update_ui(calc_result, filament_breakdown, result))
 
     def _handle_unknown_filament_for_meta(self, meta: FilamentMeta) -> FilamentProfile | None:
         """Maak een nieuw profiel aan voor een onbekend filament.
@@ -371,7 +405,15 @@ class App:
             self._root,
             self._sm,
             on_path_changed=self._on_path_changed,
+            on_settings_changed=self._on_all_settings_changed,
         )
+
+    def _on_all_settings_changed(self) -> None:
+        """Herbereken en pas thema toe na wijzigingen in de instellingendialoog."""
+        settings = self._sm.get()
+        self._main_window.apply_theme(settings.theme)
+        if self._last_parse_result is not None:
+            self._on_parse_result(self._last_parse_result)
 
     def _on_path_changed(self, new_path: str) -> None:
         """Herstart de watcher op het nieuwe pad."""
@@ -386,6 +428,11 @@ class App:
     def _open_history(self) -> None:
         """Open de geschiedenis-weergave."""
         HistoryView(self._root, self._sm)
+
+    def _open_about(self) -> None:
+        """Open het about-venster."""
+        from bambu_price_calculator.ui.about_dialog import AboutDialog
+        AboutDialog(self._root)
 
     def _check_update(self) -> None:
         """Controleer op updates in een achtergrondthread."""
@@ -467,11 +514,14 @@ class App:
         self,
         calc_result: CalculationResult,
         filament_breakdown: list[tuple[str, str, float, float]] | None = None,
+        parse_result: ParseResult | None = None,
     ) -> None:
         """Update de MainWindow met het berekeningsresultaat en sla op in history."""
         self._main_window.update_result(calc_result)
         if filament_breakdown:
             self._main_window.update_filament_breakdown(filament_breakdown)
+        if parse_result:
+            self._main_window.update_print_details(parse_result)
 
         # Voeg toe aan history
         record = HistoryRecord(
@@ -484,11 +534,25 @@ class App:
         )
         self._sm.append_history(record)
 
-        # Toon notificatie als venster verborgen is
-        if not self._root.winfo_viewable():
-            self._tray.show_notification(
-                title="Bambu Price Calculator",
-                message=f"{calc_result.filename}: € {calc_result.sale_price:.2f}",
+        # Toon rijke popup als venster verborgen is
+        if not self._root.winfo_viewable() and parse_result:
+            hours = int(calc_result.print_time_minutes // 60)
+            minutes = int(calc_result.print_time_minutes % 60)
+            time_str = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
+
+            from bambu_price_calculator.ui.toast_popup import ToastPopup
+            is_dark = self._main_window._resolve_sv_theme(
+                self._sm.get().theme
+            ) == "dark"
+
+            ToastPopup(
+                price=f"€ {calc_result.sale_price:.2f}",
+                time_str=time_str,
+                weight_str=f"{calc_result.weight_grams:.1f}g",
+                object_name=parse_result.object_name,
+                thumbnail_data=parse_result.thumbnail_data,
+                on_click=self._show_window,
+                dark=is_dark,
             )
 
     # ------------------------------------------------------------------

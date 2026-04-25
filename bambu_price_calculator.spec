@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec-bestand voor Bambu Price Calculator
+# PyInstaller spec-bestand voor PandaPrice
 # Gegenereerd voor onefile-modus met assets en hidden imports
 
 import os
@@ -49,7 +49,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='BambuPriceCalculator',
+    name='PandaPrice',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

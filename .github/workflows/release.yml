@@ -42,7 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: installer
-          path: dist\installer\BambuPriceCalculator-Setup.exe
+          path: dist\installer\PandaPrice-Setup.exe
 
   release:
     needs: build
@@ -60,6 +60,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: BambuPriceCalculator-Setup.exe
+          files: PandaPrice-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

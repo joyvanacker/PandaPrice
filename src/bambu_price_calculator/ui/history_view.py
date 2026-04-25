@@ -1,4 +1,4 @@
-"""HistoryView — Berekeningsgeschiedenis voor de Bambu Price Calculator.
+"""HistoryView — Berekeningsgeschiedenis voor PandaPrice.
 
 Toont een gesorteerde lijst van eerdere berekeningen en biedt de mogelijkheid
 de geschiedenis te wissen.
@@ -57,6 +57,9 @@ class HistoryView(tk.Toplevel):
         x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
         y = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
         self.geometry(f"+{x}+{y}")
+
+        from bambu_price_calculator.ui.theme_utils import apply_dialog_titlebar
+        apply_dialog_titlebar(self)
 
         self.wait_window(self)
 

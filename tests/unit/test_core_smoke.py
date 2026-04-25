@@ -1,4 +1,4 @@
-"""Smoke tests voor de core modules van Bambu Price Calculator.
+"""Smoke tests voor de core modules van PandaPrice.
 
 Geen externe dependencies vereist (geen watchdog, geen requests, geen tkinter).
 """
@@ -274,7 +274,7 @@ class TestI18nManager:
         manager = I18nManager()
         manager.load("en")
         result = manager.t("app.title")
-        assert result == "Bambu Price Calculator"
+        assert result == "PandaPrice"
 
     def test_available_locales_bevat_en_en_nl(self):
         from bambu_price_calculator.core.i18n_manager import I18nManager

@@ -1,4 +1,4 @@
-"""TrayIcon — Systeem-tray icoon voor de Bambu Price Calculator.
+"""TrayIcon — Systeem-tray icoon voor PandaPrice.
 
 Gebruikt pystray voor het systeem-tray icoon met een groen Bambu-icoon.
 Biedt contextmenu met "Calculator openen" en "Afsluiten".
@@ -24,23 +24,32 @@ def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 
 
 def _create_icon_image() -> "PIL.Image.Image":  # type: ignore[name-defined]
-    """Maak een 64x64 PIL Image met een groene cirkel (Bambu-stijl)."""
-    from PIL import Image, ImageDraw
+    """Laad het PandaPrice icoon, of maak een fallback."""
+    from PIL import Image
+    from pathlib import Path
 
+    # Probeer het gegenereerde icoon te laden
+    icon_path = Path(__file__).parent.parent / "assets" / "icon.ico"
+    try:
+        if icon_path.exists():
+            img = Image.open(icon_path)
+            img = img.resize((64, 64), Image.LANCZOS)
+            return img.convert("RGBA")
+    except Exception:
+        pass
+
+    # Fallback: groene cirkel
+    from PIL import ImageDraw
     size = 64
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     r, g, b = _hex_to_rgb(BAMBU_GREEN)
-    margin = 4
-    draw.ellipse(
-        [margin, margin, size - margin, size - margin],
-        fill=(r, g, b, 255),
-    )
+    draw.ellipse([4, 4, size - 4, size - 4], fill=(r, g, b, 255))
     return img
 
 
 class TrayIcon:
-    """Systeem-tray icoon voor de Bambu Price Calculator.
+    """Systeem-tray icoon voor PandaPrice.
 
     Gebruik:
         tray = TrayIcon(root)
@@ -55,6 +64,11 @@ class TrayIcon:
         self._thread: threading.Thread | None = None
 
         self.on_show: Callable[[], None] | None = None
+        self.on_open_settings: Callable[[], None] | None = None
+        self.on_open_filaments: Callable[[], None] | None = None
+        self.on_open_history: Callable[[], None] | None = None
+        self.on_check_update: Callable[[], None] | None = None
+        self.on_about: Callable[[], None] | None = None
         self.on_quit: Callable[[], None] | None = None
 
     # ------------------------------------------------------------------
@@ -73,10 +87,33 @@ class TrayIcon:
 
         menu = Menu(
             MenuItem(
-                "Calculator openen",
+                "Openen",
                 self._on_show_clicked,
                 default=True,
             ),
+            Menu.SEPARATOR,
+            MenuItem(
+                "Instellingen",
+                self._on_settings_clicked,
+            ),
+            MenuItem(
+                "Filamentprofielen",
+                self._on_filaments_clicked,
+            ),
+            MenuItem(
+                "Geschiedenis",
+                self._on_history_clicked,
+            ),
+            Menu.SEPARATOR,
+            MenuItem(
+                "Controleer op updates",
+                self._on_update_clicked,
+            ),
+            MenuItem(
+                "Over PandaPrice",
+                self._on_about_clicked,
+            ),
+            Menu.SEPARATOR,
             MenuItem(
                 "Afsluiten",
                 self._on_quit_clicked,
@@ -86,7 +123,7 @@ class TrayIcon:
         self._icon = pystray.Icon(
             name="BambuPriceCalculator",
             icon=image,
-            title="Bambu Price Calculator",
+            title="PandaPrice",
             menu=menu,
         )
 
@@ -124,12 +161,38 @@ class TrayIcon:
     # ------------------------------------------------------------------
 
     def _on_show_clicked(self, icon: object, item: object) -> None:
-        """Callback voor 'Calculator openen' in het contextmenu."""
         if self.on_show:
             self._root.after(0, self.on_show)
 
+    def _on_settings_clicked(self, icon: object, item: object) -> None:
+        if self.on_show:
+            self._root.after(0, self.on_show)
+        if self.on_open_settings:
+            self._root.after(100, self.on_open_settings)
+
+    def _on_filaments_clicked(self, icon: object, item: object) -> None:
+        if self.on_show:
+            self._root.after(0, self.on_show)
+        if self.on_open_filaments:
+            self._root.after(100, self.on_open_filaments)
+
+    def _on_history_clicked(self, icon: object, item: object) -> None:
+        if self.on_show:
+            self._root.after(0, self.on_show)
+        if self.on_open_history:
+            self._root.after(100, self.on_open_history)
+
+    def _on_update_clicked(self, icon: object, item: object) -> None:
+        if self.on_check_update:
+            self._root.after(0, self.on_check_update)
+
+    def _on_about_clicked(self, icon: object, item: object) -> None:
+        if self.on_show:
+            self._root.after(0, self.on_show)
+        if self.on_about:
+            self._root.after(100, self.on_about)
+
     def _on_quit_clicked(self, icon: object, item: object) -> None:
-        """Callback voor 'Afsluiten' in het contextmenu."""
         self.stop()
         if self.on_quit:
             self._root.after(0, self.on_quit)

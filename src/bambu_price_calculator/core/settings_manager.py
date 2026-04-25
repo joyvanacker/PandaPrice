@@ -1,4 +1,4 @@
-"""Settings Manager voor Bambu Price Calculator.
+"""Settings Manager voor PandaPrice.
 
 Beheert persistentie van instellingen, filamentprofielen en berekeningsgeschiedenis
 via een JSON-bestand in %APPDATA%\\BambuPriceCalculator\\settings.json.
@@ -52,9 +52,25 @@ class Settings:
 
     version: int = 1
     gcode_watch_path: str = ""
+    # Eenvoudige modus
     cost_per_hour: float = 2.50
     filament_margin_pct: float = 10.0
     profit_margin_pct: float = 20.0
+    use_advanced_pricing: bool = False
+    # Geavanceerde modus — machinekosten
+    energy_watt: float = 120.0          # stroomverbruik printer in Watt
+    energy_price_kwh: float = 0.25      # elektriciteitsprijs €/kWh
+    machine_price: float = 1000.0       # aanschafprijs printer €
+    machine_lifespan_hours: float = 5000.0  # verwachte levensduur in uren
+    maintenance_per_hour: float = 0.10  # onderhoudskost €/uur
+    # Geavanceerde modus — arbeidskosten
+    prep_time_min: float = 5.0          # voorbewerkingstijd (min)
+    post_time_min: float = 10.0         # nabewerkingstijd (min)
+    labor_rate: float = 15.0            # uurtarief arbeid €/uur
+    # Geavanceerde modus — vaste kosten per print
+    setup_cost: float = 0.0             # opstartkosten per print €
+    failure_rate_pct: float = 5.0       # faalpercentage %
+    # Weergave
     theme: str = "system"
     language: str = "auto"
     filament_profiles: list[FilamentProfile] = field(default_factory=list)
@@ -143,6 +159,17 @@ def _settings_from_dict(data: dict[str, Any]) -> Settings:
         cost_per_hour=_safe_float(data.get("cost_per_hour"), defaults.cost_per_hour),
         filament_margin_pct=_safe_float(data.get("filament_margin_pct"), defaults.filament_margin_pct),
         profit_margin_pct=_safe_float(data.get("profit_margin_pct"), defaults.profit_margin_pct),
+        use_advanced_pricing=bool(data.get("use_advanced_pricing", defaults.use_advanced_pricing)),
+        energy_watt=_safe_float(data.get("energy_watt"), defaults.energy_watt),
+        energy_price_kwh=_safe_float(data.get("energy_price_kwh"), defaults.energy_price_kwh),
+        machine_price=_safe_float(data.get("machine_price"), defaults.machine_price),
+        machine_lifespan_hours=_safe_float(data.get("machine_lifespan_hours"), defaults.machine_lifespan_hours),
+        maintenance_per_hour=_safe_float(data.get("maintenance_per_hour"), defaults.maintenance_per_hour),
+        prep_time_min=_safe_float(data.get("prep_time_min"), defaults.prep_time_min),
+        post_time_min=_safe_float(data.get("post_time_min"), defaults.post_time_min),
+        labor_rate=_safe_float(data.get("labor_rate"), defaults.labor_rate),
+        setup_cost=_safe_float(data.get("setup_cost"), defaults.setup_cost),
+        failure_rate_pct=_safe_float(data.get("failure_rate_pct"), defaults.failure_rate_pct),
         theme=_safe_str(data.get("theme"), defaults.theme),
         language=_safe_str(data.get("language"), defaults.language),
         filament_profiles=filament_profiles,

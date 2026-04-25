@@ -1,4 +1,4 @@
-"""PriceCalculator voor Bambu Price Calculator.
+"""PriceCalculator voor PandaPrice.
 
 Berekent de verkoopprijs van een 3D-print op basis van gewicht, printtijd,
 filamentprofiel en instellingen.

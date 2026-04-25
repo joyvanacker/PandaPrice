@@ -1,4 +1,4 @@
-# Bambu Price Calculator
+# PandaPrice
 
 Een Windows-desktopapplicatie die automatisch verkoopprijzen berekent voor 3D-prints op basis van gcode-bestanden die Bambu Studio aanmaakt.
 

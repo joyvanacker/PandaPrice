@@ -38,7 +38,7 @@ class _GcodeEventHandler(FileSystemEventHandler):
             self._handle_gcode_event(event.src_path)
 
     def _handle_gcode_event(self, filepath: str) -> None:
-        """Wacht kort op bestandsstabiliteit en parseert het gcode-bestand."""
+        """Wacht kort op bestandsstabiliteit, parseert gcode en 3MF."""
         time.sleep(_FILE_SETTLE_DELAY)
         try:
             result = self._parser.parse(filepath)
@@ -48,6 +48,22 @@ class _GcodeEventHandler(FileSystemEventHandler):
         except Exception as exc:  # noqa: BLE001
             logger.error("Onverwachte fout bij parsen van %s: %s", filepath, exc)
             return
+
+        # Probeer bijbehorend 3MF bestand te vinden en metadata te mergen
+        try:
+            from bambu_price_calculator.core.threemf_parser import (
+                find_threemf_for_gcode,
+                parse_threemf,
+            )
+            threemf_path = find_threemf_for_gcode(filepath)
+            if threemf_path:
+                info = parse_threemf(threemf_path)
+                if info:
+                    result.thumbnail_data = info.thumbnail_data
+                    result.object_name = info.object_name
+                    result.printer_model_id = info.printer_model_id
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("3MF parsing overgeslagen: %s", exc)
 
         if self._on_parse_result is not None:
             self._on_parse_result(result)
@@ -73,11 +89,8 @@ class GcodeWatcher:
         """
         Start de bestandssysteem-bewaking op het opgegeven pad.
 
-        Maakt een PollingObserver aan (geschikt voor netwerk- en tijdelijke mappen)
-        met een polling-interval van 1 seconde. De observer draait in een daemon-thread.
-
-        Args:
-            path: Pad naar de te bewaken map.
+        Scant eerst de map op het nieuwste bestaande gcode-bestand,
+        en bewaakt daarna op nieuwe/gewijzigde bestanden.
         """
         self.stop()
 
@@ -97,6 +110,9 @@ class GcodeWatcher:
 
         self._observer = observer
         logger.info("GcodeWatcher gestart op: %s", path)
+
+        # Initiële scan: verwerk het nieuwste bestaande gcode bestand
+        self._scan_existing(path, handler)
 
     def stop(self) -> None:
         """Stopt de actieve observer als die draait."""
@@ -119,3 +135,29 @@ class GcodeWatcher:
         """
         self.stop()
         self.start(path)
+
+    def _scan_existing(self, path: str, handler: _GcodeEventHandler) -> None:
+        """Zoek het nieuwste gcode bestand in de map en verwerk het."""
+        import os
+
+        newest_path: str | None = None
+        newest_mtime: float = 0
+
+        try:
+            for dirpath, _, filenames in os.walk(path):
+                for name in filenames:
+                    if name.endswith(".gcode"):
+                        full = os.path.join(dirpath, name)
+                        try:
+                            mt = os.path.getmtime(full)
+                            if mt > newest_mtime:
+                                newest_mtime = mt
+                                newest_path = full
+                        except OSError:
+                            pass
+        except OSError:
+            return
+
+        if newest_path:
+            logger.info("Initiële scan: verwerk %s", newest_path)
+            handler._handle_gcode_event(newest_path)

@@ -1,4 +1,4 @@
-"""Entrypoint voor de Bambu Price Calculator."""
+"""Entrypoint voor PandaPrice."""
 
 from bambu_price_calculator.app import App
 
