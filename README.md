@@ -59,34 +59,6 @@ Filament profiles are automatically created from gcode metadata (brand, material
 
 PandaPrice checks for updates on startup via the GitHub Releases API. When a newer version is available, it shows a dialog with release notes and offers to download and install the update.
 
-## Development
-
-```bash
-pip install -r requirements.txt -r requirements-dev.txt
-pip install -e .
-pytest
-```
-
-### Building
-
-```bash
-pyinstaller bambu_price_calculator.spec
-iscc installer/setup.iss
-```
-
-### Releasing
-
-1. Update version in `pyproject.toml`, `src/bambu_price_calculator/__init__.py`, and `src/bambu_price_calculator/app.py`
-2. Update `CHANGELOG.md`
-3. Tag and push:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The GitHub Actions workflow builds the installer and publishes it as a release asset.
-
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
