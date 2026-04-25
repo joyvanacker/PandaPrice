@@ -303,23 +303,14 @@ class MainWindow:
         minutes = int(total_time_min % 60)
         time_display = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
 
-        # Merge print details van alle plates
+        # Verzamel print details van alle plates (per plate een regel)
         total_details: dict[str, str] = {}
-        total_vol = 0.0
         for i, p in enumerate(real_plates):
             d = p.get("details")
             if d:
                 plate_name = p.get("object_name", f"Plate {i+1}")
-                for k, v in d.items():
-                    if k == "Volume":
-                        try:
-                            total_vol += float(v.replace("cm³", "").strip())
-                        except ValueError:
-                            pass
-                    elif k not in total_details:
-                        total_details[k] = v
-        if total_vol > 0:
-            total_details["Volume"] = f"{total_vol:.2f} cm³"
+                detail_str = "  •  ".join(d.values())
+                total_details[plate_name] = detail_str
 
         plates[0] = dict(
             price=f"€ {total_price:.2f}",
