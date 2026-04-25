@@ -303,6 +303,24 @@ class MainWindow:
         minutes = int(total_time_min % 60)
         time_display = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
 
+        # Merge print details van alle plates
+        total_details: dict[str, str] = {}
+        total_vol = 0.0
+        for i, p in enumerate(real_plates):
+            d = p.get("details")
+            if d:
+                plate_name = p.get("object_name", f"Plate {i+1}")
+                for k, v in d.items():
+                    if k == "Volume":
+                        try:
+                            total_vol += float(v.replace("cm³", "").strip())
+                        except ValueError:
+                            pass
+                    elif k not in total_details:
+                        total_details[k] = v
+        if total_vol > 0:
+            total_details["Volume"] = f"{total_vol:.2f} cm³"
+
         plates[0] = dict(
             price=f"€ {total_price:.2f}",
             time_str=time_display,
@@ -310,7 +328,7 @@ class MainWindow:
             object_name=f"Totaal ({len(real_plates)} plates)",
             thumbnail_data=real_plates[0].get("thumbnail_data", b""),
             filament_items=merged_list if merged_list else None,
-            details=None,
+            details=total_details if total_details else None,
         )
 
     def _show_current(self) -> None:
