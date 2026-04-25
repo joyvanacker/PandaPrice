@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bambu-price-calculator"
+version = "0.1.0"
+description = "Automatische verkoopprijsberekening voor 3D-prints op basis van Bambu Studio gcode-bestanden"
+requires-python = ">=3.11"
+dependencies = [
+    "sv-ttk>=2.6.0",
+    "watchdog>=4.0.0",
+    "pystray>=0.19.5",
+    "requests>=2.31.0",
+    "semver>=3.0.2",
+    "Pillow>=10.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
+
+[tool.hypothesis]
+max_examples = 100

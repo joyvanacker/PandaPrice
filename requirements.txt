@@ -1,0 +1,6 @@
+sv-ttk>=2.6.0
+watchdog>=4.0.0
+pystray>=0.19.5
+requests>=2.31.0
+semver>=3.0.2
+Pillow>=10.0.0
