@@ -85,7 +85,7 @@ class GcodeWatcher:
 
         observer = PollingObserver(timeout=_POLLING_INTERVAL)
         try:
-            observer.schedule(handler, path=path, recursive=False)
+            observer.schedule(handler, path=path, recursive=True)
             observer.daemon = True
             observer.start()
         except (OSError, PermissionError) as exc:

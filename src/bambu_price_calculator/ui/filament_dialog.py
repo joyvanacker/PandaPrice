@@ -290,23 +290,13 @@ class FilamentDialog(tk.Toplevel):
             self._refresh_list()
 
     def _delete(self) -> None:
-        """Verwijder het geselecteerde profiel, met blokkering als het het laatste is."""
+        """Verwijder het geselecteerde profiel."""
         idx = self._selected_index()
         if idx is None:
             messagebox.showinfo("Verwijderen", "Selecteer eerst een profiel.", parent=self)
             return
 
         profiles = list(self._sm.get().filament_profiles)
-
-        if len(profiles) <= 1:
-            messagebox.showwarning(
-                "Verwijderen geblokkeerd",
-                "Het laatste filamentprofiel kan niet worden verwijderd.\n"
-                "Er moet altijd minimaal één profiel aanwezig zijn.",
-                parent=self,
-            )
-            return
-
         profile = profiles[idx]
         confirm = messagebox.askyesno(
             "Verwijderen",

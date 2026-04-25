@@ -79,26 +79,65 @@ class PriceCalculator:
     ) -> FilamentProfile | None:
         """Zoek een filamentprofiel dat overeenkomt met de gegeven filamentmetadata.
 
+        Bij multicolor prints kan dezelfde filament_id (bijv. GFL01) meerdere keren
+        voorkomen met verschillende kleuren. Daarom is filament_id + color_hex de
+        primaire matchsleutel.
+
         Matchvolgorde:
-        1. Exacte match op filament_id (als beide niet leeg zijn)
-        2. Case-insensitieve match op brand + material_type
+        1. filament_id + color_hex (uniek per kleurvariant)
+        2. profile_name + color_hex (filament_settings_id uit gcode)
+        3. brand + material_type + color_hex
+        4. filament_id alleen (fallback, zelfde materiaal andere kleur)
+        5. brand + material_type alleen (fallback)
 
         Geeft None terug als geen match gevonden wordt.
         """
-        # Stap 1: match op filament_id
-        if filament_meta.filament_id:
-            for profile in profiles:
-                if profile.filament_id and profile.filament_id == filament_meta.filament_id:
-                    return profile
-
-        # Stap 2: match op brand + material_type (case-insensitief)
+        meta_color = (filament_meta.color_hex or "").lower()
         meta_brand = filament_meta.brand.lower()
         meta_material = filament_meta.material_type.lower()
-        for profile in profiles:
-            if (
-                profile.brand.lower() == meta_brand
-                and profile.material_type.lower() == meta_material
-            ):
-                return profile
+
+        # Stap 1: filament_id + color_hex — meest specifiek
+        if filament_meta.filament_id and meta_color:
+            for profile in profiles:
+                if (
+                    profile.filament_id == filament_meta.filament_id
+                    and profile.color_hex.lower() == meta_color
+                ):
+                    return profile
+
+        # Stap 2: profile_name + color_hex
+        if filament_meta.profile_name and meta_color:
+            meta_name = filament_meta.profile_name.lower()
+            for profile in profiles:
+                if (
+                    profile.name.lower() == meta_name
+                    and profile.color_hex.lower() == meta_color
+                ):
+                    return profile
+
+        # Stap 3: brand + material_type + color_hex
+        if meta_color:
+            for profile in profiles:
+                if (
+                    profile.brand.lower() == meta_brand
+                    and profile.material_type.lower() == meta_material
+                    and profile.color_hex.lower() == meta_color
+                ):
+                    return profile
+
+        # Stap 4: als er geen kleur beschikbaar is, match op filament_id alleen
+        if not meta_color and filament_meta.filament_id:
+            for profile in profiles:
+                if profile.filament_id == filament_meta.filament_id:
+                    return profile
+
+        # Stap 5: als er geen kleur beschikbaar is, match op brand + material_type
+        if not meta_color:
+            for profile in profiles:
+                if (
+                    profile.brand.lower() == meta_brand
+                    and profile.material_type.lower() == meta_material
+                ):
+                    return profile
 
         return None

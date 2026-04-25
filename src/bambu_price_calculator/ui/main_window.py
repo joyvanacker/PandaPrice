@@ -195,6 +195,14 @@ class MainWindow:
         # Separator
         ttk.Separator(frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=6)
 
+        # Filament breakdown frame (dynamisch gevuld)
+        self._filament_frame = ttk.Frame(frame)
+        self._filament_frame.pack(fill=tk.X, anchor=tk.W)
+
+        # Separator voor totaalprijs
+        self._price_separator = ttk.Separator(frame, orient=tk.HORIZONTAL)
+        self._price_separator.pack(fill=tk.X, pady=6)
+
         # "TOTAALPRIJS" label
         ttk.Label(
             frame,
@@ -211,10 +219,6 @@ class MainWindow:
             font=("TkDefaultFont", 18, "bold"),
         )
         self._price_label.pack(anchor=tk.W)
-
-        # Filament label
-        self._filament_label = ttk.Label(frame, text="")
-        self._filament_label.pack(anchor=tk.W)
 
     def _build_statusbar(self) -> None:
         """Bouw de statusbalk onderaan het venster."""
@@ -244,10 +248,42 @@ class MainWindow:
 
         self._price_label.config(text=f"€ {result.sale_price:.2f}")
 
-        profile = result.filament_profile
-        self._filament_label.config(
-            text=f"{profile.brand} {profile.name} ({profile.material_type})"
-        )
+    def update_filament_breakdown(
+        self,
+        items: list[tuple[str, str, float, float]],
+    ) -> None:
+        """Toon per filament: naam, kleur, gewicht en kosten.
+
+        Args:
+            items: lijst van (profiel_naam, color_hex, gewicht_gram, kosten_euro)
+        """
+        # Verwijder oude labels
+        for widget in self._filament_frame.winfo_children():
+            widget.destroy()
+
+        if not items:
+            return
+
+        ttk.Label(
+            self._filament_frame,
+            text="Filamenten:",
+            font=("TkDefaultFont", 8, "bold"),
+        ).pack(anchor=tk.W, pady=(0, 2))
+
+        for name, color_hex, weight, cost in items:
+            row = ttk.Frame(self._filament_frame)
+            row.pack(fill=tk.X, pady=1)
+
+            # Kleurblokje via een klein Canvas
+            canvas = tk.Canvas(row, width=12, height=12, highlightthickness=0)
+            canvas.pack(side=tk.LEFT, padx=(0, 4))
+            canvas.create_rectangle(0, 0, 12, 12, fill=color_hex, outline="#888")
+
+            ttk.Label(
+                row,
+                text=f"{name}  —  {weight:.1f}g  —  € {cost:.2f}",
+                font=("TkDefaultFont", 8),
+            ).pack(side=tk.LEFT)
 
     def set_status(self, text: str, is_error: bool = False) -> None:
         """Update de statusbalk. Bij is_error wordt de tekst rood weergegeven."""

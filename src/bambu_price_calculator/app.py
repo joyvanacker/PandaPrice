@@ -12,7 +12,7 @@ import tkinter as tk
 from tkinter import messagebox
 from typing import Any
 
-from bambu_price_calculator.core.gcode_parser import ParseResult
+from bambu_price_calculator.core.gcode_parser import ParseResult, FilamentMeta
 from bambu_price_calculator.core.gcode_watcher import GcodeWatcher
 from bambu_price_calculator.core.i18n_manager import I18nManager
 from bambu_price_calculator.core.price_calculator import CalculationResult, PriceCalculator
@@ -173,52 +173,134 @@ class App:
     # ------------------------------------------------------------------
 
     def _on_parse_result(self, result: ParseResult) -> None:
-        """Verwerk een parse-resultaat: bereken prijs en update UI."""
+        """Verwerk een parse-resultaat: bereken prijs per filament en update UI."""
         self._last_parse_result = result
         settings = self._sm.get()
 
-        # Zoek matching filamentprofiel
-        profile: FilamentProfile | None = None
-        if result.filament_meta:
-            profile = self._calculator.find_matching_profile(
-                result.filament_meta, settings.filament_profiles
-            )
-            if profile is None:
-                # Onbekend filament: vraag prijs aan gebruiker
-                profile = self._handle_unknown_filament(result)
+        # Multi-filament: match elk filament afzonderlijk
+        matched_profiles: list[FilamentProfile] = []
+        weights = result.weight_per_filament
 
-        # Geen filament_meta of geen match gevonden: gebruik eerste profiel
-        if profile is None:
-            if settings.filament_profiles:
-                profile = settings.filament_profiles[0]
+        for i, meta in enumerate(result.filament_metas):
+            weight = weights[i] if i < len(weights) else 0.0
+            if weight <= 0:
+                continue  # dit filament wordt niet gebruikt
+
+            profile = self._calculator.find_matching_profile(meta, settings.filament_profiles)
+            if profile is None:
+                profile = self._handle_unknown_filament_for_meta(meta)
+                # Herlaad settings na eventueel nieuw profiel
+                settings = self._sm.get()
+            if profile is not None:
+                matched_profiles.append(profile)
             else:
+                # Gebruiker annuleerde — gebruik eerste beschikbaar profiel
+                if settings.filament_profiles:
+                    matched_profiles.append(settings.filament_profiles[0])
+
+        # Fallback: als geen filamenten gematcht, gebruik eerste profiel
+        if not matched_profiles:
+            if result.filament_meta:
+                profile = self._calculator.find_matching_profile(
+                    result.filament_meta, settings.filament_profiles
+                )
+                if profile:
+                    matched_profiles.append(profile)
+            if not matched_profiles and settings.filament_profiles:
+                matched_profiles.append(settings.filament_profiles[0])
+            elif not matched_profiles:
                 logger.warning("Geen filamentprofielen beschikbaar voor berekening.")
                 return
 
-        # Bereken prijs
-        calc_result = self._calculator.calculate(result, profile, settings)
+        # Bereken totaalprijs: som van kosten per filament + bouw breakdown
+        total_filament_cost = 0.0
+        filament_breakdown: list[tuple[str, str, float, float]] = []
+        used_weights: list[float] = []
 
-        # Update UI via root.after (thread-safe)
-        self._root.after(0, lambda: self._update_ui(calc_result))
+        for i, profile in enumerate(matched_profiles):
+            weight = weights[i] if i < len(weights) else 0.0
+            if weight <= 0:
+                continue
+            used_weights.append(weight)
+            prijs_per_gram = profile.purchase_price_eur / profile.spool_weight_grams
+            slot_cost = weight * prijs_per_gram * (1 + settings.filament_margin_pct / 100)
+            total_filament_cost += slot_cost
+            filament_breakdown.append((
+                f"{profile.brand} {profile.name}",
+                profile.color_hex,
+                weight,
+                round(slot_cost, 2),
+            ))
 
-    def _handle_unknown_filament(self, result: ParseResult) -> FilamentProfile | None:
-        """Vraag de gebruiker om een prijs voor een onbekend filament en maak een profiel aan."""
-        meta = result.filament_meta
-        if meta is None:
-            return None
+        uren = result.print_time_minutes / 60
+        sale_price = round(
+            (uren * settings.cost_per_hour + total_filament_cost) * (1 + settings.profit_margin_pct / 100),
+            2,
+        )
 
-        # Dialoog moet in de main thread worden getoond
+        # Maak een CalculationResult met het eerste profiel als referentie
+        from bambu_price_calculator.core.price_calculator import CalculationResult
+        from datetime import datetime
+
+        calc_result = CalculationResult(
+            filename=result.filename,
+            timestamp=datetime.now().isoformat(),
+            weight_grams=result.weight_grams,
+            print_time_minutes=result.print_time_minutes,
+            filament_profile=matched_profiles[0],
+            cost_per_hour=settings.cost_per_hour,
+            filament_margin_pct=settings.filament_margin_pct,
+            profit_margin_pct=settings.profit_margin_pct,
+            sale_price=sale_price,
+        )
+
+        self._root.after(0, lambda: self._update_ui(calc_result, filament_breakdown))
+
+    def _handle_unknown_filament_for_meta(self, meta: FilamentMeta) -> FilamentProfile | None:
+        """Maak een nieuw profiel aan voor een onbekend filament.
+
+        Gebruikt profile_name, color_hex en cost_per_kg uit de gcode.
+        Als cost_per_kg beschikbaar is, wordt het profiel automatisch aangemaakt.
+        Controleert eerst of het profiel niet al eerder in deze sessie is aangemaakt.
+        """
+        # Herlaad settings — misschien is het profiel net aangemaakt door een ander slot
+        settings = self._sm.get()
+        profile = self._calculator.find_matching_profile(meta, settings.filament_profiles)
+        if profile is not None:
+            return profile
+
+        # Gebruik de profielnaam uit de gcode, of maak een beschrijvende naam
+        name = meta.profile_name or f"{meta.brand} {meta.material_type}".strip()
+        if meta.color_hex:
+            name = f"{name} ({meta.color_hex})"
+
+        # Als Bambu Studio al een prijs per kg heeft, maak automatisch aan
+        if meta.cost_per_kg > 0:
+            new_profile = FilamentProfile(
+                name=name,
+                brand=meta.brand,
+                material_type=meta.material_type,
+                color_hex=meta.color_hex or "#FFFFFF",
+                spool_weight_grams=1000.0,
+                purchase_price_eur=meta.cost_per_kg,
+                filament_id=meta.filament_id,
+            )
+            profiles = list(settings.filament_profiles)
+            profiles.append(new_profile)
+            self._sm.update(filament_profiles=profiles)
+            return new_profile
+
+        # Geen prijs beschikbaar: vraag de gebruiker
         price_holder: list[float | None] = [None]
 
         def _show_dialog() -> None:
             price = show_unknown_filament_dialog(
                 self._root,
                 filament_id=meta.filament_id,
-                material_type=meta.material_type,
+                material_type=f"{name} ({meta.material_type})",
             )
             price_holder[0] = price
 
-        # Voer dialoog uit in main thread en wacht op resultaat
         event = threading.Event()
 
         def _run_and_signal() -> None:
@@ -226,15 +308,14 @@ class App:
             event.set()
 
         self._root.after(0, _run_and_signal)
-        event.wait(timeout=300)  # max 5 minuten wachten
+        event.wait(timeout=300)
 
         price = price_holder[0]
         if price is None:
             return None
 
-        # Maak nieuw profiel aan
         new_profile = FilamentProfile(
-            name=meta.material_type,
+            name=name,
             brand=meta.brand,
             material_type=meta.material_type,
             color_hex=meta.color_hex or "#FFFFFF",
@@ -243,7 +324,6 @@ class App:
             filament_id=meta.filament_id,
         )
 
-        # Sla op
         settings = self._sm.get()
         profiles = list(settings.filament_profiles)
         profiles.append(new_profile)
@@ -383,9 +463,15 @@ class App:
     # UI update helpers
     # ------------------------------------------------------------------
 
-    def _update_ui(self, calc_result: CalculationResult) -> None:
+    def _update_ui(
+        self,
+        calc_result: CalculationResult,
+        filament_breakdown: list[tuple[str, str, float, float]] | None = None,
+    ) -> None:
         """Update de MainWindow met het berekeningsresultaat en sla op in history."""
         self._main_window.update_result(calc_result)
+        if filament_breakdown:
+            self._main_window.update_filament_breakdown(filament_breakdown)
 
         # Voeg toe aan history
         record = HistoryRecord(
