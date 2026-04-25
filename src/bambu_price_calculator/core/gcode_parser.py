@@ -49,6 +49,9 @@ class ParseResult:
     thumbnail_data: bytes = b""
     object_name: str = ""
     printer_model_id: str = ""
+    # Mesh data
+    volume_cm3: float = 0.0
+    bbox_mm: tuple[float, float, float] = (0.0, 0.0, 0.0)
     raw_metadata: dict[str, str] = field(default_factory=dict)
 
 

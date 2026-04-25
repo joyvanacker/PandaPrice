@@ -534,6 +534,11 @@ class App:
                 details["Hoogte"] = f"{parse_result.model_height_mm}mm"
             if parse_result.nozzle_diameter_mm:
                 details["Nozzle"] = f"{parse_result.nozzle_diameter_mm}mm"
+            if parse_result.volume_cm3:
+                details["Volume"] = f"{parse_result.volume_cm3} cm³"
+            if parse_result.bbox_mm and any(v > 0 for v in parse_result.bbox_mm):
+                l, b, h = parse_result.bbox_mm
+                details["Afmetingen"] = f"{l}×{b}×{h}mm"
 
         self._main_window.add_result_card(
             session_id=parse_result.session_id if parse_result else "",

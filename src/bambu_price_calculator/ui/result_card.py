@@ -68,7 +68,7 @@ class ResultCard(ttk.Frame):
 
         ttk.Label(
             info, text=price,
-            font=("Segoe UI", 28, "bold"), foreground=BAMBU_GREEN,
+            font=("Segoe UI", 28, "bold"),
         ).pack(anchor=tk.W, pady=(2, 0))
 
         # Filament breakdown

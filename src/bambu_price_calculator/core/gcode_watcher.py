@@ -49,6 +49,21 @@ class _GcodeEventHandler(FileSystemEventHandler):
             logger.error("Onverwachte fout bij parsen van %s: %s", filepath, exc)
             return
 
+        # Probeer 3D mesh te parsen voor wireframe, volume en bbox
+        try:
+            from bambu_price_calculator.core.mesh_parser import find_model_file, parse_model_file
+            model_path = find_model_file(filepath)
+            if model_path:
+                mesh = parse_model_file(model_path)
+                if mesh:
+                    result.volume_cm3 = mesh.volume_cm3
+                    result.bbox_mm = mesh.bbox_mm
+                    # Wireframe als primaire thumbnail
+                    if mesh.thumbnail_data:
+                        result.thumbnail_data = mesh.thumbnail_data
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Mesh parsing overgeslagen: %s", exc)
+
         # Probeer bijbehorend 3MF bestand te vinden en metadata te mergen
         try:
             from bambu_price_calculator.core.threemf_parser import (
@@ -61,11 +76,13 @@ class _GcodeEventHandler(FileSystemEventHandler):
             if threemf_path:
                 info = parse_threemf(threemf_path)
                 if info:
-                    result.thumbnail_data = info.thumbnail_data
+                    # 3MF thumbnail als fallback (alleen als wireframe niet beschikbaar)
+                    if not result.thumbnail_data and info.thumbnail_data:
+                        result.thumbnail_data = info.thumbnail_data
                     result.object_name = info.object_name
                     result.printer_model_id = info.printer_model_id
 
-            # Haal modelnaam uit de project-3MF (betere naam dan "Assembly")
+            # Haal modelnaam uit de project-3MF
             project_path = find_project_threemf(filepath)
             if project_path:
                 model_name = extract_model_name(project_path)
