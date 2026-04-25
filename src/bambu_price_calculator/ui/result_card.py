@@ -106,10 +106,9 @@ class ResultCard(ttk.Frame):
                 font=("Segoe UI", 9, "bold"), foreground=TEXT_SECONDARY,
             ).pack(anchor=tk.W, pady=(8, 4))
 
-            detail_parts = [f"{v}" for k, v in details.items()]
-            if detail_parts:
+            for key, value in details.items():
                 ttk.Label(
                     self,
-                    text="  •  ".join(detail_parts),
+                    text=f"{key}:  {value}",
                     font=("Segoe UI", 7), foreground=TEXT_SECONDARY,
-                ).pack(anchor=tk.W, pady=(4, 0))
+                ).pack(anchor=tk.W, pady=1)
