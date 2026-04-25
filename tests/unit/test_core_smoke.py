@@ -109,7 +109,7 @@ class TestGcodeParser:
         gcode.write_text(
             "; filament used [g] = 15.50\n"
             "; estimated printing time = 1h 23m 45s\n"
-            "; filament_id = GFL99\n"
+            "; filament_ids = GFL99\n"
             "; filament_type = PLA\n"
             "; filament_colour = #FF5733\n"
             "; filament_vendor = Bambu Lab\n",
