@@ -536,6 +536,7 @@ class App:
                 details["Nozzle"] = f"{parse_result.nozzle_diameter_mm}mm"
 
         self._main_window.add_result_card(
+            session_id=parse_result.session_id if parse_result else "",
             price=f"€ {calc_result.sale_price:.2f}",
             time_str=time_str,
             weight_str=f"{calc_result.weight_grams:.1f}g",
