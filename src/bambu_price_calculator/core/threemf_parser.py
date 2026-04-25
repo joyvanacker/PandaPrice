@@ -19,10 +19,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ThreeMFInfo:
     """Metadata geëxtraheerd uit een 3MF bestand."""
-    thumbnail_data: bytes = b""       # PNG data van de plate thumbnail
-    object_name: str = ""             # Naam van het hoofdobject
-    printer_model_id: str = ""        # Printer model ID (bijv. "C12")
-    creation_date: str = ""           # Aanmaakdatum
+    thumbnail_data: bytes = b""
+    object_name: str = ""
+    model_name: str = ""              # Originele modelnaam (zonder extensie)
+    printer_model_id: str = ""
+    creation_date: str = ""
 
 
 def parse_threemf(filepath: str) -> ThreeMFInfo | None:
@@ -93,13 +94,51 @@ def parse_threemf(filepath: str) -> ThreeMFInfo | None:
 
 
 def find_threemf_for_gcode(gcode_path: str) -> str | None:
-    """Zoek het bijbehorende 3MF bestand voor een gcode bestand.
-
-    Bambu Studio plaatst het 3MF in dezelfde map als de gcode,
-    met dezelfde basisnaam maar .3mf extensie.
-    """
+    """Zoek het bijbehorende geslicede 3MF bestand voor een gcode bestand."""
     p = Path(gcode_path)
     candidate = p.with_suffix(".3mf")
     if candidate.exists():
         return str(candidate)
     return None
+
+
+def find_project_threemf(gcode_path: str) -> str | None:
+    """Zoek de project-3MF (ongeslieed) in de parent map van de Metadata map.
+
+    Bambu Studio structuur:
+        session_dir/.3mf              ← project 3MF
+        session_dir/Metadata/.gcode   ← geslicede gcode
+    """
+    p = Path(gcode_path)
+    # gcode zit in Metadata/, project 3MF zit in de parent daarvan
+    session_dir = p.parent.parent
+    candidate = session_dir / ".3mf"
+    if candidate.exists():
+        return str(candidate)
+    # Zoek ook naar andere .3mf bestanden in de session dir
+    for f in session_dir.glob("*.3mf"):
+        return str(f)
+    return None
+
+
+def extract_model_name(project_3mf_path: str) -> str:
+    """Extraheer de originele modelnaam uit een project-3MF.
+
+    Zoekt in Metadata/model_settings.config naar het 'name' attribuut
+    van het eerste object. Stript de bestandsextensie.
+    """
+    try:
+        with zipfile.ZipFile(project_3mf_path, "r") as zf:
+            if "Metadata/model_settings.config" not in zf.namelist():
+                return ""
+            tree = ElementTree.fromstring(zf.read("Metadata/model_settings.config"))
+            for obj in tree.iter("object"):
+                for meta in obj.iter("metadata"):
+                    if meta.get("key") == "name":
+                        name = meta.get("value", "")
+                        if name:
+                            # Strip extensie (.step, .stl, .3mf, etc.)
+                            return Path(name).stem
+            return ""
+    except Exception:
+        return ""

@@ -53,6 +53,8 @@ class _GcodeEventHandler(FileSystemEventHandler):
         try:
             from bambu_price_calculator.core.threemf_parser import (
                 find_threemf_for_gcode,
+                find_project_threemf,
+                extract_model_name,
                 parse_threemf,
             )
             threemf_path = find_threemf_for_gcode(filepath)
@@ -62,6 +64,13 @@ class _GcodeEventHandler(FileSystemEventHandler):
                     result.thumbnail_data = info.thumbnail_data
                     result.object_name = info.object_name
                     result.printer_model_id = info.printer_model_id
+
+            # Haal modelnaam uit de project-3MF (betere naam dan "Assembly")
+            project_path = find_project_threemf(filepath)
+            if project_path:
+                model_name = extract_model_name(project_path)
+                if model_name:
+                    result.object_name = model_name
         except Exception as exc:  # noqa: BLE001
             logger.debug("3MF parsing overgeslagen: %s", exc)
 
