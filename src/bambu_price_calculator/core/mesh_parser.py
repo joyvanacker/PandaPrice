@@ -201,14 +201,87 @@ def _render_wireframe(
 
 
 def find_model_file(gcode_path: str) -> str | None:
-    """Zoek het .model bestand in de 3D/Objects map van de session."""
+    """Zoek het juiste .model bestand voor een specifiek gcode bestand.
+
+    Gebruikt de project-3MF om de mapping gcode → object_id → model bestand
+    te bepalen. Valt terug op het eerste .model bestand als de mapping faalt.
+    """
     p = Path(gcode_path)
-    # gcode zit in Metadata/, model in ../3D/Objects/
     session_dir = p.parent.parent
     objects_dir = session_dir / "3D" / "Objects"
     if not objects_dir.exists():
         return None
-    # Neem het eerste .model bestand
+
+    gcode_name = p.name
+
+    # Probeer de mapping via de project-3MF
+    project_3mf = session_dir / ".3mf"
+    if project_3mf.exists():
+        try:
+            model_path = _find_model_via_3mf(project_3mf, gcode_name, objects_dir)
+            if model_path:
+                return model_path
+        except Exception:
+            pass
+
+    # Fallback: eerste .model bestand
     for f in sorted(objects_dir.glob("*.model")):
         return str(f)
+    return None
+
+
+def _find_model_via_3mf(
+    project_3mf: Path, gcode_name: str, objects_dir: Path
+) -> str | None:
+    """Zoek het juiste .model bestand via de project-3MF mapping.
+
+    Pad: gcode_name → plate.gcode_file → plate.model_instance.object_id
+         → 3dmodel.model component.path → object_X.model
+    """
+    ns3mf = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+    ns_prod = "http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
+
+    with zipfile.ZipFile(project_3mf) as zf:
+        names = zf.namelist()
+
+        # Stap 1: Zoek object_id voor deze gcode via model_settings.config
+        if "Metadata/model_settings.config" not in names:
+            return None
+
+        config = ElementTree.fromstring(zf.read("Metadata/model_settings.config"))
+        target_obj_id: str | None = None
+
+        for plate in config.iter("plate"):
+            gcode_file = ""
+            for meta in plate.iter("metadata"):
+                if meta.get("key") == "gcode_file":
+                    gcode_file = meta.get("value", "")
+            if gcode_name in gcode_file:
+                for mi in plate.iter("model_instance"):
+                    for meta in mi.iter("metadata"):
+                        if meta.get("key") == "object_id":
+                            target_obj_id = meta.get("value", "")
+                            break
+                    if target_obj_id:
+                        break
+                break
+
+        if not target_obj_id:
+            return None
+
+        # Stap 2: Zoek het component path in 3dmodel.model
+        if "3D/3dmodel.model" not in names:
+            return None
+
+        model_xml = ElementTree.fromstring(zf.read("3D/3dmodel.model"))
+        for obj in model_xml.iter(f"{{{ns3mf}}}object"):
+            if obj.get("id") == target_obj_id:
+                for comp in obj.iter(f"{{{ns3mf}}}component"):
+                    comp_path = comp.get(f"{{{ns_prod}}}path", "")
+                    if comp_path:
+                        # comp_path is bijv. "/3D/Objects/object_1.model"
+                        model_file = objects_dir / Path(comp_path).name
+                        if model_file.exists():
+                            return str(model_file)
+
     return None
