@@ -305,8 +305,6 @@ class App:
 
         # Gebruik de profielnaam uit de gcode, of maak een beschrijvende naam
         name = meta.profile_name or f"{meta.brand} {meta.material_type}".strip()
-        if meta.color_hex:
-            name = f"{name} ({meta.color_hex})"
 
         # Als Bambu Studio al een prijs per kg heeft, maak automatisch aan
         if meta.cost_per_kg > 0:
