@@ -5,8 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bambu-price-calculator"
 version = "0.2.0"
-description = "Automatische verkoopprijsberekening voor 3D-prints op basis van Bambu Studio gcode-bestanden"
+description = "Automatic price calculator for 3D prints based on Bambu Studio gcode files"
 requires-python = ">=3.11"
+license = {text = "MIT"}
 dependencies = [
     "sv-ttk>=2.6.0",
     "watchdog>=4.0.0",

@@ -1,135 +1,96 @@
 # PandaPrice
 
-Een Windows-desktopapplicatie die automatisch verkoopprijzen berekent voor 3D-prints op basis van gcode-bestanden die Bambu Studio aanmaakt.
+Automatic price calculator for 3D prints based on Bambu Studio gcode files.
 
-De app bewaakt een gcode-map op de achtergrond, parseert nieuwe bestanden zodra ze verschijnen, en berekent direct een verkoopprijs op basis van printtijd, filamentverbruik en jouw ingestelde parameters. Resultaten worden bijgehouden in een geschiedenis en de app draait als systeem-tray icoon zodat hij niet in de weg zit.
+PandaPrice runs in the background, watches for new sliced files from Bambu Studio, and instantly calculates a sale price based on print time, filament usage, and your configured parameters. It supports multicolor prints, multiple plates, multiple Bambu Studio instances, and shows a 3D wireframe preview of each model.
 
-## Vereisten
+## Features
 
-- Windows 10 of nieuwer
-- Python 3.11 of nieuwer
+- Automatic gcode detection from Bambu Studio temp folder
+- Multicolor and multi-filament support with per-slot pricing
+- Multi-plate support with totals and per-plate navigation
+- Multiple Bambu Studio instance support with carousel navigation
+- 3D wireframe preview rendered from the model mesh
+- Automatic filament profile creation from gcode metadata
+- Simple and advanced pricing modes (energy, depreciation, labor, failure rate)
+- Print details: layer height, infill, volume, bounding box, nozzle size
+- System tray with rich toast notifications
+- Dark/light/system theme with Bambu Studio-inspired design
+- Auto-update via GitHub Releases
+- Calculation history
+- Multilingual (English, Dutch)
 
-## Installatie
+## Requirements
 
-### Via de installer (aanbevolen)
+- Windows 10 or newer
+- Python 3.11 or newer
 
-Download de nieuwste `installer.exe` van de [Releases-pagina](https://github.com/joyvanacker/PandaPrice/releases) en voer hem uit.
+## Installation
 
-### Vanuit broncode
+### Installer (recommended)
+
+Download the latest `PandaPrice-Setup.exe` from the [Releases page](https://github.com/joyvanacker/PandaPrice/releases) and run it.
+
+### From source
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Gebruik
-
-### App starten
-
-```bash
+pip install -e .
 python -m bambu_price_calculator
 ```
 
-Of dubbelklik op de geïnstalleerde snelkoppeling in het startmenu.
+## Usage
 
-### Gcode-map instellen
+On first launch, PandaPrice automatically detects the Bambu Studio temp folder. If not found, you can set the path manually via Settings.
 
-Bij de eerste opstart probeert de app de Bambu Studio tijdelijke map automatisch te vinden. Als dat niet lukt, verschijnt er een dialoog om het pad handmatig in te stellen.
+The app watches for new gcode files in the background. When Bambu Studio slices a model, PandaPrice instantly calculates the price and shows it in the main window or as a toast notification if minimized to the system tray.
 
-Je kunt het pad altijd aanpassen via **Instellingen → Gcode-map**. Klik op de mapkiezer-knop om een map te selecteren. De watcher herstart automatisch op het nieuwe pad.
+### Pricing
 
-Standaard Bambu Studio-paden die automatisch worden gedetecteerd:
+Simple mode: configure cost per hour, filament margin, and profit margin.
 
-- `%LOCALAPPDATA%\Bambu Lab\Bambu Studio\cache`
-- `%TEMP%\Bambu Studio`
+Advanced mode: break down costs into energy consumption, machine depreciation, maintenance, labor (prep + post-processing time), setup costs, and failure rate.
 
-### Berekeningsparameters instellen
+### Filament profiles
 
-Via **Instellingen** stel je in:
+Filament profiles are automatically created from gcode metadata (brand, material type, color, price per kg from Bambu Studio settings). You can edit profiles manually via the filament profiles dialog.
 
-- **Kosten per uur (€)** — machineuurtarief
-- **Filamentmarge (%)** — opslag op de filamentkosten
-- **Winstmarge (%)** — algemene winstopslag
+## Auto-update
 
-De verkoopprijs wordt berekend als:
+PandaPrice checks for updates on startup via the GitHub Releases API. When a newer version is available, it shows a dialog with release notes and offers to download and install the update.
 
-```
-verkoopprijs = (
-    (printtijd_minuten / 60) × kosten_per_uur
-    + gewicht_gram × (aankoopprijs / rolgewicht) × (1 + filamentmarge / 100)
-) × (1 + winstmarge / 100)
-```
-
-### Filamentprofielen beheren
-
-Via **Filamenten** maak je profielen aan met merk, kleur, materiaaltype, rolgewicht en aankoopprijs. De app herkent het gebruikte filament automatisch uit de gcode-metadata en selecteert het bijbehorende profiel. Bij een onbekend filament wordt gevraagd om een prijs per kg in te voeren, waarna een nieuw profiel wordt aangemaakt.
-
-### Systeem-tray
-
-Het venster sluiten of minimaliseren verbergt de app naar de systeem-tray. Dubbelklik op het tray-icoon om het venster te herstellen. Via het contextmenu kies je **Openen** of **Afsluiten**.
-
-## Auto-update workflow
-
-De app controleert bij elke opstart automatisch op updates via de GitHub Releases API.
-
-### Hoe het werkt
-
-1. Bij opstart roept `UpdateManager` `GET /repos/{owner}/{repo}/releases/latest` aan.
-2. Het versienummer van de nieuwste release wordt vergeleken met de huidige versie via semantische versienummering (SemVer 2.0).
-3. Als er een nieuwere versie beschikbaar is, verschijnt er een dialoog met het versienummer en de releasenotities.
-4. Na bevestiging downloadt de app de `installer.exe` uit de release-assets naar een tijdelijke map.
-5. De installer wordt gestart en de app sluit zichzelf af zodat de installatie kan plaatsvinden.
-
-Als de GitHub API niet bereikbaar is, start de app gewoon op zonder foutmelding. Een mislukte download toont een dialoog met de opties **Opnieuw proberen** of **Overslaan**.
-
-Je kunt ook handmatig een updatecontrole starten via **Help → Controleer op updates**.
-
-## Ontwikkelaarsinstructies
-
-### Omgeving opzetten
+## Development
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-```
-
-### Tests uitvoeren
-
-```bash
+pip install -e .
 pytest
 ```
 
-### Applicatie bouwen
-
-Zorg dat [PyInstaller](https://pyinstaller.org/) en [Inno Setup](https://jrsoftware.org/isinfo.php) geïnstalleerd zijn.
+### Building
 
 ```bash
-# Stap 1: bouw de .exe
 pyinstaller bambu_price_calculator.spec
-
-# Stap 2: bouw de installer
 iscc installer/setup.iss
 ```
 
-De installer verschijnt als `installer/Output/installer.exe`.
+### Releasing
 
-### Release publiceren
-
-1. Verhoog de versie in `pyproject.toml` en `src/bambu_price_calculator/app.py`.
-2. Werk `CHANGELOG.md` bij met de wijzigingen voor de nieuwe versie.
-3. Commit en tag de release:
+1. Update version in `pyproject.toml`, `src/bambu_price_calculator/__init__.py`, and `src/bambu_price_calculator/app.py`
+2. Update `CHANGELOG.md`
+3. Tag and push:
 
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-De GitHub Actions workflow (`.github/workflows/release.yml`) bouwt automatisch de installer en publiceert hem als GitHub Release-asset.
+The GitHub Actions workflow builds the installer and publishes it as a release asset.
 
-### GitHub owner/repo aanpassen
+## License
 
-De `UpdateManager` in `src/bambu_price_calculator/app.py` bevat de GitHub-repository-referentie:
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-```python
-self._update_manager = UpdateManager("0.1.0", "joyvanacker", "PandaPrice")
-```
+## Disclaimer
 
-De repository staat op [github.com/joyvanacker/PandaPrice](https://github.com/joyvanacker/PandaPrice).
+PandaPrice is not affiliated with, endorsed by, or associated with Bambu Lab. "Bambu Studio" is a trademark of Bambu Lab. This is an independent open-source tool.
