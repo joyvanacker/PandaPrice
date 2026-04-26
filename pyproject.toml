@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bambu-price-calculator"
-version = "0.2.0"
+version = "0.2.1"
 description = "Automatic price calculator for 3D prints based on Bambu Studio gcode files"
 requires-python = ">=3.11"
 license = {text = "MIT"}
