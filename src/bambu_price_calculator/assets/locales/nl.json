@@ -32,6 +32,7 @@
   "settings.gcode_path": "G-code map:",
   "settings.theme": "Thema",
   "settings.language": "Taal",
+  "settings.currency": "Valuta",
   "settings.use_advanced": "Geavanceerde prijsberekening gebruiken",
   "settings.save": "Opslaan",
   "settings.cancel": "Annuleren",

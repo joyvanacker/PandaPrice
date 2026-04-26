@@ -73,6 +73,7 @@ class Settings:
     # Weergave
     theme: str = "system"
     language: str = "auto"
+    currency_symbol: str = "€"
     filament_profiles: list[FilamentProfile] = field(default_factory=list)
     history: list[HistoryRecord] = field(default_factory=list)
 
@@ -172,6 +173,7 @@ def _settings_from_dict(data: dict[str, Any]) -> Settings:
         failure_rate_pct=_safe_float(data.get("failure_rate_pct"), defaults.failure_rate_pct),
         theme=_safe_str(data.get("theme"), defaults.theme),
         language=_safe_str(data.get("language"), defaults.language),
+        currency_symbol=_safe_str(data.get("currency_symbol"), defaults.currency_symbol),
         filament_profiles=filament_profiles,
         history=history,
     )

@@ -32,6 +32,7 @@
   "settings.gcode_path": "G-code folder:",
   "settings.theme": "Theme",
   "settings.language": "Language",
+  "settings.currency": "Currency",
   "settings.use_advanced": "Use advanced pricing",
   "settings.save": "Save",
   "settings.cancel": "Cancel",

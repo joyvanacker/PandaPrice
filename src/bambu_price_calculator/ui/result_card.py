@@ -29,9 +29,11 @@ class ResultCard(ttk.Frame):
         thumbnail_data: bytes = b"",
         filament_items: list[tuple[str, str, float, float]] | None = None,
         details: dict[str, str] | None = None,
+        currency: str = "€",
     ) -> None:
         super().__init__(parent, padding=(10, 8))
-        self._photo = None  # bewaar referentie
+        self._photo = None
+        self._currency = currency
 
         # Top row: thumbnail + prijs info
         top = ttk.Frame(self)
@@ -93,7 +95,7 @@ class ResultCard(ttk.Frame):
 
                 ttk.Label(row, text=name, font=("Segoe UI", 9)).pack(side=tk.LEFT)
                 ttk.Label(
-                    row, text=f"€ {cost:.2f}",
+                    row, text=f"{self._currency} {cost:.2f}",
                     font=("Segoe UI", 9), foreground=BAMBU_GREEN,
                 ).pack(side=tk.RIGHT)
                 ttk.Label(

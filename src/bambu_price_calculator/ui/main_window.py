@@ -264,10 +264,12 @@ class MainWindow:
         all_filaments: list[tuple[str, str, float, float]] = []
 
         for p in real_plates:
-            # Parse prijs uit string "€ 1.23"
-            price_str = p.get("price", "€ 0.00")
+            # Parse prijs uit string (bijv. "€ 1.23" of "$ 1.23")
+            price_str = p.get("price", "0.00")
             try:
-                total_price += float(price_str.replace("€", "").strip())
+                # Strip alles behalve cijfers, punt en min
+                import re
+                total_price += float(re.sub(r"[^\d.\-]", "", price_str))
             except ValueError:
                 pass
             # Parse gewicht
@@ -317,8 +319,9 @@ class MainWindow:
                 detail_str = "  •  ".join(d.values())
                 total_details[plate_name] = detail_str
 
+        cs = self._sm.get().currency_symbol if hasattr(self, '_sm') else "€"
         plates[0] = dict(
-            price=f"€ {total_price:.2f}",
+            price=f"{cs} {total_price:.2f}",
             time_str=time_display,
             weight_str=f"{total_weight:.1f}g",
             object_name=get_i18n().t("result.total_plates", count=len(real_plates)),
@@ -348,7 +351,7 @@ class MainWindow:
 
         data = real_plates[self._plate_index]
         if data:
-            card = ResultCard(self._card_container, **data)
+            card = ResultCard(self._card_container, currency=self._sm.get().currency_symbol, **data)
             card.pack(fill=tk.X)
             # Bewaar referentie naar de card zodat _photo niet GC'd wordt
             self._current_card = card

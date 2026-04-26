@@ -121,6 +121,12 @@ class SettingsDialog(tk.Toplevel):
                       values=self._available_languages(), state="readonly", width=9).grid(row=row, column=1, sticky=tk.E, pady=3)
         row += 1
 
+        ttk.Label(parent, text=i18n.t("settings.currency")).grid(row=row, column=0, sticky=tk.W, pady=3)
+        ttk.Combobox(parent, textvariable=self._sv("currency_symbol", self._s.currency_symbol),
+                      values=["€", "$", "£", "¥", "CHF", "kr", "R$", "₹", "zł"],
+                      state="readonly", width=9).grid(row=row, column=1, sticky=tk.E, pady=3)
+        row += 1
+
         ttk.Separator(parent, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=8)
         row += 1
 
@@ -207,6 +213,7 @@ class SettingsDialog(tk.Toplevel):
             gcode_watch_path=new_path,
             theme=_THEME_MAP.get(self._vars["theme"].get(), "system"),
             language=self._vars["language"].get(),
+            currency_symbol=self._vars["currency_symbol"].get(),
             use_advanced_pricing=use_adv,
             # Eenvoudig
             cost_per_hour=self._get_float("cost_per_hour", self._s.cost_per_hour),

@@ -525,6 +525,8 @@ class App:
         minutes = int(calc_result.print_time_minutes % 60)
         time_str = f"{hours}u {minutes:02d}m" if hours else f"{minutes}m"
 
+        cs = self._sm.get().currency_symbol
+
         # Bouw details dict
         details: dict[str, str] = {}
         if parse_result:
@@ -557,7 +559,7 @@ class App:
         self._main_window.add_result_card(
             session_id=parse_result.session_id if parse_result else "",
             plate_index=plate_idx,
-            price=f"€ {calc_result.sale_price:.2f}",
+            price=f"{cs} {calc_result.sale_price:.2f}",
             time_str=time_str,
             weight_str=f"{calc_result.weight_grams:.1f}g",
             object_name=parse_result.object_name if parse_result else "",
@@ -585,7 +587,7 @@ class App:
             ) == "dark"
 
             ToastPopup(
-                price=f"€ {calc_result.sale_price:.2f}",
+                price=f"{cs} {calc_result.sale_price:.2f}",
                 time_str=time_str,
                 weight_str=f"{calc_result.weight_grams:.1f}g",
                 object_name=parse_result.object_name,
