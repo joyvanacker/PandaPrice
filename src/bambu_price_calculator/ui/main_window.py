@@ -72,7 +72,9 @@ class MainWindow:
 
         try:
             from pathlib import Path
-            icon_path = Path(__file__).parent.parent / "assets" / "icon.ico"
+            is_dark = self._resolve_sv_theme(settings.theme) == "dark"
+            icon_name = "icon_white.ico" if is_dark else "icon.ico"
+            icon_path = Path(__file__).parent.parent / "assets" / icon_name
             if icon_path.exists():
                 self._root.iconbitmap(str(icon_path))
         except Exception:

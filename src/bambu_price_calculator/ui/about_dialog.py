@@ -29,12 +29,14 @@ class AboutDialog(tk.Toplevel):
         self._photo = None
         try:
             from PIL import Image, ImageTk
-            # Gebruik de hoge-resolutie PNG
-            png_path = Path(__file__).parent.parent / "assets" / "icon_256.png"
-            icon_path = Path(__file__).parent.parent / "assets" / "icon.ico"
-            src = png_path if png_path.exists() else icon_path
-            if src.exists():
-                img = Image.open(src).resize((96, 96), Image.LANCZOS)
+            from bambu_price_calculator.ui.theme_utils import _is_dark_mode
+            is_dark = _is_dark_mode()
+            png_name = "icon_256_white.png" if is_dark else "icon_256.png"
+            png_path = Path(__file__).parent.parent / "assets" / png_name
+            if not png_path.exists():
+                png_path = Path(__file__).parent.parent / "assets" / "icon_256.png"
+            if png_path.exists():
+                img = Image.open(png_path).resize((96, 96), Image.LANCZOS)
                 self._photo = ImageTk.PhotoImage(img)
                 ttk.Label(frame, image=self._photo).pack(pady=(0, 12))
         except Exception:
