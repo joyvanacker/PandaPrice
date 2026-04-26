@@ -103,11 +103,26 @@ class I18nManager:
     @staticmethod
     def _detect_system_locale() -> str:
         """Detecteer de systeemtaal en geef een twee-letter taalcode terug."""
+        # Windows geeft bijv. "English_United Kingdom" of "Dutch_Netherlands"
+        # We moeten dit mappen naar "en" of "nl"
+        _LANG_MAP = {
+            "english": "en", "dutch": "nl", "german": "de", "french": "fr",
+            "spanish": "es", "italian": "it", "portuguese": "pt",
+            "japanese": "ja", "chinese": "zh", "korean": "ko",
+            "polish": "pl", "swedish": "sv", "danish": "da",
+            "norwegian": "no", "finnish": "fi", "czech": "cs",
+            "turkish": "tr", "russian": "ru",
+        }
         try:
             lang = locale.getlocale()[0]
             if lang:
-                return lang.split("_")[0].lower()
-        except Exception:  # noqa: BLE001
+                # Probeer eerst split op _ (bijv. "en_GB" → "en")
+                code = lang.split("_")[0].lower()
+                # Als het een volledige naam is (bijv. "english"), map het
+                if len(code) > 3:
+                    code = _LANG_MAP.get(code, code[:2])
+                return code
+        except Exception:
             pass
         return "en"
 
