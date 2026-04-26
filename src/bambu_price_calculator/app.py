@@ -431,26 +431,50 @@ class App:
         self._main_window.apply_theme(settings.theme)
 
         if lang_changed:
-            # Herstart de app om de UI volledig te herladen
-            self._restart()
+            # Herbouw de UI en tray menu in-place
+            self._tray.stop()
+            self._rebuild_ui()
+            self._tray = TrayIcon(self._root)
+            self._tray.on_show = self._show_window
+            self._tray.on_open_settings = self._open_settings
+            self._tray.on_open_filaments = self._open_filaments
+            self._tray.on_open_history = self._open_history
+            self._tray.on_check_update = self._check_update
+            self._tray.on_about = self._open_about
+            self._tray.on_quit = self._quit
+            self._tray.start()
             return
 
         if self._last_parse_result is not None:
             self._on_parse_result(self._last_parse_result)
 
-    def _restart(self) -> None:
-        """Herstart de applicatie om taalwijzigingen door te voeren."""
-        import sys
-        import subprocess
-        self._watcher.stop()
-        self._tray.stop()
-        # Start een nieuw proces
-        subprocess.Popen([sys.executable, "-m", "bambu_price_calculator"])
-        try:
-            self._root.destroy()
-        except Exception:
-            pass
-        sys.exit(0)
+    def _rebuild_ui(self) -> None:
+        """Herbouw de volledige UI na een taalwijziging (zonder herstart)."""
+        # Verwijder alle widgets behalve de root
+        for widget in self._root.winfo_children():
+            widget.destroy()
+
+        # Herbouw MainWindow
+        self._main_window = MainWindow(self._root, self._i18n, self._sm)
+
+        # Herconnect callbacks
+        self._main_window.on_open_settings = self._open_settings
+        self._main_window.on_open_filaments = self._open_filaments
+        self._main_window.on_open_history = self._open_history
+        self._main_window.on_check_update = self._check_update
+        self._main_window.on_about = self._open_about
+        self._main_window.on_quit = self._quit
+
+        # Herstel status
+        if self._watcher_active:
+            self._main_window.set_watch_active(True)
+
+        # Herbereken als er een resultaat was
+        if self._last_parse_result is not None:
+            self._on_parse_result(self._last_parse_result)
+
+        # Venster-sluit protocol opnieuw instellen
+        self._root.protocol("WM_DELETE_WINDOW", self._hide_window)
 
     def _on_path_changed(self, new_path: str) -> None:
         """Herstart de watcher op het nieuwe pad."""
