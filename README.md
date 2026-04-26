@@ -1,5 +1,9 @@
 # PandaPrice
 
+![GitHub last commit](https://img.shields.io/github/last-commit/joyvanacker/PandaPrice?style=flat-square&color=2ecc71)
+![GitHub top language](https://img.shields.io/github/languages/top/joyvanacker/PandaPrice?style=flat-square&color=3498db)
+![GitHub license](https://img.shields.io/github/license/joyvanacker/PandaPrice?style=flat-square&color=f1c40f)
+
 Automatic price calculator for 3D prints based on Bambu Studio gcode files.
 
 PandaPrice runs in the background, watches for new sliced files from Bambu Studio, and instantly calculates a sale price based on print time, filament usage, and your configured parameters. It supports multicolor prints, multiple plates, multiple Bambu Studio instances, and shows a 3D wireframe preview of each model.
