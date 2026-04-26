@@ -25,13 +25,13 @@ def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     )
 
 
-def _create_icon_image() -> "PIL.Image.Image":  # type: ignore[name-defined]
-    """Laad het PandaPrice icoon, of maak een fallback."""
+def _create_icon_image(dark: bool = True) -> "PIL.Image.Image":  # type: ignore[name-defined]
+    """Laad het PandaPrice icoon, wit voor dark mode, zwart voor light mode."""
     from PIL import Image
     from pathlib import Path
 
-    # Probeer het gegenereerde icoon te laden
-    icon_path = Path(__file__).parent.parent / "assets" / "icon.ico"
+    icon_name = "icon_white.ico" if dark else "icon.ico"
+    icon_path = Path(__file__).parent.parent / "assets" / icon_name
     try:
         if icon_path.exists():
             img = Image.open(icon_path)
@@ -85,7 +85,7 @@ class TrayIcon:
         except ImportError:
             return  # pystray niet beschikbaar — stilzwijgend uitschakelen
 
-        image = _create_icon_image()
+        image = _create_icon_image(dark=self._is_dark_mode())
 
         i18n = get_i18n()
         menu = Menu(
@@ -199,3 +199,15 @@ class TrayIcon:
         self.stop()
         if self.on_quit:
             self._root.after(0, self.on_quit)
+
+    @staticmethod
+    def _is_dark_mode() -> bool:
+        try:
+            import winreg
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            winreg.CloseKey(key)
+            return value == 0
+        except Exception:
+            return True
