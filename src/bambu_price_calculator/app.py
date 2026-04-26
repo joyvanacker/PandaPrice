@@ -415,11 +415,42 @@ class App:
         )
 
     def _on_all_settings_changed(self) -> None:
-        """Herbereken en pas thema toe na wijzigingen in de instellingendialoog."""
+        """Herbereken, pas thema toe, en herlaad taal na wijzigingen."""
         settings = self._sm.get()
+
+        # Controleer of de taal gewijzigd is
+        new_lang = settings.language
+        if new_lang == "auto":
+            new_lang = self._i18n._detect_system_locale()
+        old_lang = self._i18n._current_locale
+        lang_changed = new_lang != old_lang
+
+        if lang_changed:
+            self._i18n.load(new_lang)
+
         self._main_window.apply_theme(settings.theme)
+
+        if lang_changed:
+            # Herstart de app om de UI volledig te herladen
+            self._restart()
+            return
+
         if self._last_parse_result is not None:
             self._on_parse_result(self._last_parse_result)
+
+    def _restart(self) -> None:
+        """Herstart de applicatie om taalwijzigingen door te voeren."""
+        import sys
+        import subprocess
+        self._watcher.stop()
+        self._tray.stop()
+        # Start een nieuw proces
+        subprocess.Popen([sys.executable, "-m", "bambu_price_calculator"])
+        try:
+            self._root.destroy()
+        except Exception:
+            pass
+        sys.exit(0)
 
     def _on_path_changed(self, new_path: str) -> None:
         """Herstart de watcher op het nieuwe pad."""
