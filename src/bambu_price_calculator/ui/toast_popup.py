@@ -11,6 +11,7 @@ import io
 import tkinter as tk
 from typing import Callable
 
+from bambu_price_calculator.core.i18n_manager import get_i18n
 
 BAMBU_GREEN = "#00AE42"
 _POPUP_WIDTH = 320
@@ -87,7 +88,7 @@ class ToastPopup:
 
         # App naam
         tk.Label(
-            info, text="PandaPrice", bg=bg, fg=BAMBU_GREEN,
+            info, text=get_i18n().t("app.title"), bg=bg, fg=BAMBU_GREEN,
             font=("Segoe UI", 8, "bold"), anchor=tk.W,
         ).pack(anchor=tk.W)
 
@@ -112,7 +113,7 @@ class ToastPopup:
 
         # Klik hint
         tk.Label(
-            frame, text="Klik om te openen", bg=bg, fg=fg_sec,
+            frame, text=get_i18n().t("toast.click_to_open"), bg=bg, fg=fg_sec,
             font=("Segoe UI", 7), anchor=tk.E,
         ).pack(anchor=tk.E)
 

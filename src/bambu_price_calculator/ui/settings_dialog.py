@@ -11,6 +11,7 @@ from tkinter import filedialog, ttk
 from typing import Callable
 
 from bambu_price_calculator.core.settings_manager import SettingsManager
+from bambu_price_calculator.core.i18n_manager import get_i18n
 
 _THEME_OPTIONS = ["Licht", "Donker", "Systeem"]
 _THEME_MAP = {"Licht": "light", "Donker": "dark", "Systeem": "system"}
@@ -33,7 +34,7 @@ class SettingsDialog(tk.Toplevel):
         self._on_settings_changed = on_settings_changed
         self._s = self._sm.get()
 
-        self.title("Instellingen")
+        self.title(get_i18n().t("settings.title"))
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -63,6 +64,7 @@ class SettingsDialog(tk.Toplevel):
         return v
 
     def _build_ui(self) -> None:
+        i18n = get_i18n()
         outer = ttk.Frame(self, padding=12)
         outer.pack(fill=tk.BOTH, expand=True)
 
@@ -71,30 +73,31 @@ class SettingsDialog(tk.Toplevel):
 
         # Tab 1: Algemeen
         tab_general = ttk.Frame(nb, padding=12)
-        nb.add(tab_general, text="Algemeen")
+        nb.add(tab_general, text=i18n.t("settings.tab_general"))
         self._build_general_tab(tab_general)
 
         # Tab 2: Eenvoudig
         tab_simple = ttk.Frame(nb, padding=12)
-        nb.add(tab_simple, text="Eenvoudig")
+        nb.add(tab_simple, text=i18n.t("settings.tab_simple"))
         self._build_simple_tab(tab_simple)
 
         # Tab 3: Geavanceerd
         tab_adv = ttk.Frame(nb, padding=12)
-        nb.add(tab_adv, text="Geavanceerd")
+        nb.add(tab_adv, text=i18n.t("settings.tab_advanced"))
         self._build_advanced_tab(tab_adv)
 
         # Knoppen
         btn_frame = ttk.Frame(outer)
         btn_frame.pack(fill=tk.X)
-        ttk.Button(btn_frame, text="Opslaan", command=self._save).pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(btn_frame, text="Annuleren", command=self.destroy).pack(side=tk.LEFT)
+        ttk.Button(btn_frame, text=i18n.t("settings.save"), command=self._save).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(btn_frame, text=i18n.t("settings.cancel"), command=self.destroy).pack(side=tk.LEFT)
 
     def _build_general_tab(self, parent: ttk.Frame) -> None:
+        i18n = get_i18n()
         parent.columnconfigure(1, weight=1)
         row = 0
 
-        ttk.Label(parent, text="G-code map:", font=("Segoe UI", 9, "bold")).grid(
+        ttk.Label(parent, text=i18n.t("settings.gcode_path"), font=("Segoe UI", 9, "bold")).grid(
             row=row, column=0, columnspan=2, sticky=tk.W, pady=(0, 4))
         row += 1
 
@@ -108,12 +111,12 @@ class SettingsDialog(tk.Toplevel):
         ttk.Separator(parent, orient=tk.HORIZONTAL).grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=8)
         row += 1
 
-        ttk.Label(parent, text="Thema").grid(row=row, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text=i18n.t("settings.theme")).grid(row=row, column=0, sticky=tk.W, pady=3)
         ttk.Combobox(parent, textvariable=self._sv("theme", _THEME_MAP_INV.get(self._s.theme, "Systeem")),
                       values=_THEME_OPTIONS, state="readonly", width=9).grid(row=row, column=1, sticky=tk.E, pady=3)
         row += 1
 
-        ttk.Label(parent, text="Taal").grid(row=row, column=0, sticky=tk.W, pady=3)
+        ttk.Label(parent, text=i18n.t("settings.language")).grid(row=row, column=0, sticky=tk.W, pady=3)
         ttk.Combobox(parent, textvariable=self._sv("language", self._s.language),
                       values=self._available_languages(), state="readonly", width=9).grid(row=row, column=1, sticky=tk.E, pady=3)
         row += 1
@@ -122,49 +125,51 @@ class SettingsDialog(tk.Toplevel):
         row += 1
 
         adv_var = self._bv("use_advanced_pricing", self._s.use_advanced_pricing)
-        ttk.Checkbutton(parent, text="Geavanceerde prijsberekening gebruiken", variable=adv_var).grid(
+        ttk.Checkbutton(parent, text=i18n.t("settings.use_advanced"), variable=adv_var).grid(
             row=row, column=0, columnspan=2, sticky=tk.W, pady=3)
 
     def _build_simple_tab(self, parent: ttk.Frame) -> None:
+        i18n = get_i18n()
         parent.columnconfigure(1, weight=1)
         fields = [
-            ("Kosten per uur (€)", "cost_per_hour", self._s.cost_per_hour),
-            ("Filamentmarge (%)", "filament_margin_pct", self._s.filament_margin_pct),
-            ("Winstmarge (%)", "profit_margin_pct", self._s.profit_margin_pct),
+            (i18n.t("settings.cost_per_hour"), "cost_per_hour", self._s.cost_per_hour),
+            (i18n.t("settings.filament_margin"), "filament_margin_pct", self._s.filament_margin_pct),
+            (i18n.t("settings.profit_margin"), "profit_margin_pct", self._s.profit_margin_pct),
         ]
         for row, (label, key, val) in enumerate(fields):
             ttk.Label(parent, text=label).grid(row=row, column=0, sticky=tk.W, pady=3)
             ttk.Entry(parent, textvariable=self._sv(key, val), width=10, justify="right").grid(
                 row=row, column=1, sticky=tk.E, pady=3)
 
-        ttk.Label(parent, text="Wordt gebruikt als 'Geavanceerd' uitstaat.",
+        ttk.Label(parent, text=i18n.t("settings.simple_note"),
                   font=("Segoe UI", 8), foreground="#888").grid(
             row=len(fields), column=0, columnspan=2, sticky=tk.W, pady=(12, 0))
 
     def _build_advanced_tab(self, parent: ttk.Frame) -> None:
+        i18n = get_i18n()
         parent.columnconfigure(1, weight=1)
         row = 0
 
         sections = [
-            ("Machinekosten", [
-                ("Stroomverbruik (W)", "energy_watt", self._s.energy_watt),
-                ("Elektriciteitsprijs (€/kWh)", "energy_price_kwh", self._s.energy_price_kwh),
-                ("Aanschafprijs printer (€)", "machine_price", self._s.machine_price),
-                ("Levensduur printer (uren)", "machine_lifespan_hours", self._s.machine_lifespan_hours),
-                ("Onderhoudskost (€/uur)", "maintenance_per_hour", self._s.maintenance_per_hour),
+            (i18n.t("settings.section_machine"), [
+                (i18n.t("settings.energy_watt"), "energy_watt", self._s.energy_watt),
+                (i18n.t("settings.energy_price"), "energy_price_kwh", self._s.energy_price_kwh),
+                (i18n.t("settings.machine_price"), "machine_price", self._s.machine_price),
+                (i18n.t("settings.machine_lifespan"), "machine_lifespan_hours", self._s.machine_lifespan_hours),
+                (i18n.t("settings.maintenance"), "maintenance_per_hour", self._s.maintenance_per_hour),
             ]),
-            ("Arbeidskosten", [
-                ("Voorbewerkingstijd (min)", "prep_time_min", self._s.prep_time_min),
-                ("Nabewerkingstijd (min)", "post_time_min", self._s.post_time_min),
-                ("Uurtarief arbeid (€/uur)", "labor_rate", self._s.labor_rate),
+            (i18n.t("settings.section_labor"), [
+                (i18n.t("settings.prep_time"), "prep_time_min", self._s.prep_time_min),
+                (i18n.t("settings.post_time"), "post_time_min", self._s.post_time_min),
+                (i18n.t("settings.labor_rate"), "labor_rate", self._s.labor_rate),
             ]),
-            ("Vaste kosten per print", [
-                ("Opstartkosten (€)", "setup_cost", self._s.setup_cost),
-                ("Faalpercentage (%)", "failure_rate_pct", self._s.failure_rate_pct),
+            (i18n.t("settings.section_fixed"), [
+                (i18n.t("settings.setup_cost"), "setup_cost", self._s.setup_cost),
+                (i18n.t("settings.failure_rate"), "failure_rate_pct", self._s.failure_rate_pct),
             ]),
-            ("Marges", [
-                ("Filamentmarge (%)", "filament_margin_pct_adv", self._s.filament_margin_pct),
-                ("Winstmarge (%)", "profit_margin_pct_adv", self._s.profit_margin_pct),
+            (i18n.t("settings.section_margins"), [
+                (i18n.t("settings.filament_margin"), "filament_margin_pct_adv", self._s.filament_margin_pct),
+                (i18n.t("settings.profit_margin"), "profit_margin_pct_adv", self._s.profit_margin_pct),
             ]),
         ]
 
@@ -178,7 +183,7 @@ class SettingsDialog(tk.Toplevel):
                     row=row, column=1, sticky=tk.E, pady=2)
                 row += 1
 
-        ttk.Label(parent, text="Wordt gebruikt als 'Geavanceerd' aanstaat.",
+        ttk.Label(parent, text=i18n.t("settings.advanced_note"),
                   font=("Segoe UI", 8), foreground="#888").grid(
             row=row, column=0, columnspan=2, sticky=tk.W, pady=(12, 0))
 

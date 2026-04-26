@@ -14,7 +14,7 @@ from typing import Any
 
 from bambu_price_calculator.core.gcode_parser import ParseResult, FilamentMeta
 from bambu_price_calculator.core.gcode_watcher import GcodeWatcher
-from bambu_price_calculator.core.i18n_manager import I18nManager
+from bambu_price_calculator.core.i18n_manager import I18nManager, get_i18n
 from bambu_price_calculator.core.price_calculator import CalculationResult, PriceCalculator
 from bambu_price_calculator.core.settings_manager import (
     FilamentProfile,
@@ -49,9 +49,9 @@ class App:
         # 1. SettingsManager
         self._sm = SettingsManager()
 
-        # 2. I18nManager — laad taal uit settings
+        # 2. I18nManager — laad taal uit settings (singleton)
         settings = self._sm.get()
-        self._i18n = I18nManager()
+        self._i18n = get_i18n()
         lang = settings.language
         if lang and lang != "auto":
             self._i18n.load(lang)
@@ -384,6 +384,7 @@ class App:
     def _toggle_watch(self) -> None:
         """Toggle de GcodeWatcher aan/uit."""
         settings = self._sm.get()
+        i18n = get_i18n()
 
         if self._watcher_active:
             self._watcher.stop()
@@ -394,8 +395,8 @@ class App:
             path = settings.gcode_watch_path
             if not path:
                 messagebox.showwarning(
-                    "Geen map ingesteld",
-                    "Stel eerst een gcode-map in via Bestand → Instellingen.",
+                    "PandaPrice",
+                    i18n.t("error.no_path"),
                     parent=self._root,
                 )
                 return
@@ -466,16 +467,14 @@ class App:
         from pathlib import Path
         import tempfile
 
-        msg = (
-            f"Versie {update_info.version} is beschikbaar.\n\n"
-            f"{update_info.release_notes[:500] if update_info.release_notes else ''}\n\n"
-            "Wil je nu updaten?"
-        )
-        if messagebox.askyesno("Update beschikbaar", msg, parent=self._root):
+        i18n = get_i18n()
+        notes = update_info.release_notes[:500] if update_info.release_notes else ""
+        msg = i18n.t("update.available_body", version=update_info.version, notes=notes)
+        if messagebox.askyesno(i18n.t("update.available_title"), msg, parent=self._root):
             if not update_info.asset_url:
                 messagebox.showerror(
-                    "Update mislukt",
-                    "Geen installer-URL gevonden in de release.",
+                    i18n.t("update.available_title"),
+                    i18n.t("update.no_url"),
                     parent=self._root,
                 )
                 return
@@ -490,6 +489,7 @@ class App:
         import tempfile
         from pathlib import Path
 
+        i18n = get_i18n()
         dest_dir = Path(tempfile.mkdtemp())
         try:
             installer_path = self._update_manager.download_installer(asset_url, dest_dir)
@@ -498,9 +498,8 @@ class App:
             self._root.after(
                 0,
                 lambda: messagebox.showerror(
-                    "Download mislukt",
-                    f"De installer kon niet worden gedownload:\n{exc}\n\n"
-                    "Probeer het later opnieuw.",
+                    i18n.t("update.available_title"),
+                    i18n.t("update.download_failed", error=str(exc)),
                     parent=self._root,
                 ),
             )

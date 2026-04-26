@@ -12,6 +12,7 @@ from tkinter import messagebox, simpledialog, ttk
 from typing import Any
 
 from bambu_price_calculator.core.settings_manager import FilamentProfile, SettingsManager
+from bambu_price_calculator.core.i18n_manager import get_i18n
 
 
 # ---------------------------------------------------------------------------
@@ -33,14 +34,10 @@ def show_unknown_filament_dialog(
     Returns:
         De ingevoerde prijs per kg als float, of None als geannuleerd.
     """
-    prompt = (
-        f"Onbekend filament gedetecteerd:\n"
-        f"  ID: {filament_id}\n"
-        f"  Materiaal: {material_type}\n\n"
-        f"Voer de aankoopprijs per kg in (€):"
-    )
+    i18n = get_i18n()
+    prompt = i18n.t("filament.unknown_body", filament_id=filament_id, material=material_type)
     result = simpledialog.askfloat(
-        title="Onbekend filament",
+        title=i18n.t("filament.unknown_title"),
         prompt=prompt,
         parent=parent,
         minvalue=0.0,
@@ -64,7 +61,8 @@ class _FilamentFormDialog(tk.Toplevel):
         self._profile = profile
         self.result: FilamentProfile | None = None
 
-        self.title("Filamentprofiel bewerken" if profile else "Filamentprofiel toevoegen")
+        i18n = get_i18n()
+        self.title(i18n.t("filament.edit_title") if profile else i18n.t("filament.add_title"))
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -91,16 +89,17 @@ class _FilamentFormDialog(tk.Toplevel):
         self.wait_window(self)
 
     def _build_ui(self) -> None:
+        i18n = get_i18n()
         outer = ttk.Frame(self, padding=12)
         outer.pack(fill=tk.BOTH, expand=True)
 
         fields: list[tuple[str, tk.StringVar]] = [
-            ("Naam:", self._name_var),
-            ("Merk:", self._brand_var),
-            ("Kleur (hex):", self._color_var),
-            ("Materiaaltype:", self._material_var),
-            ("Rolgewicht (g):", self._weight_var),
-            ("Aankoopprijs (€):", self._price_var),
+            (i18n.t("filament.name"), self._name_var),
+            (i18n.t("filament.brand"), self._brand_var),
+            (i18n.t("filament.color"), self._color_var),
+            (i18n.t("filament.material"), self._material_var),
+            (i18n.t("filament.spool_weight"), self._weight_var),
+            (i18n.t("filament.price"), self._price_var),
         ]
 
         for row, (label, var) in enumerate(fields):
@@ -116,22 +115,23 @@ class _FilamentFormDialog(tk.Toplevel):
         btn_frame = ttk.Frame(outer)
         btn_frame.grid(row=len(fields), column=0, columnspan=2, sticky=tk.E, pady=(12, 0))
 
-        ttk.Button(btn_frame, text="Opslaan", command=self._save).pack(
+        ttk.Button(btn_frame, text=i18n.t("filament.save"), command=self._save).pack(
             side=tk.LEFT, padx=(0, 6)
         )
-        ttk.Button(btn_frame, text="Annuleren", command=self.destroy).pack(
+        ttk.Button(btn_frame, text=i18n.t("filament.cancel"), command=self.destroy).pack(
             side=tk.LEFT
         )
 
     def _save(self) -> None:
         """Valideer en sla het profiel op."""
+        i18n = get_i18n()
         name = self._name_var.get().strip()
         brand = self._brand_var.get().strip()
         color = self._color_var.get().strip()
         material = self._material_var.get().strip()
 
         if not name:
-            messagebox.showwarning("Validatie", "Naam is verplicht.", parent=self)
+            messagebox.showwarning("Validatie", i18n.t("filament.validation_name"), parent=self)
             return
 
         try:
@@ -140,7 +140,7 @@ class _FilamentFormDialog(tk.Toplevel):
                 raise ValueError
         except ValueError:
             messagebox.showwarning(
-                "Validatie", "Rolgewicht moet een positief getal zijn.", parent=self
+                "Validatie", i18n.t("filament.validation_weight"), parent=self
             )
             return
 
@@ -150,7 +150,7 @@ class _FilamentFormDialog(tk.Toplevel):
                 raise ValueError
         except ValueError:
             messagebox.showwarning(
-                "Validatie", "Aankoopprijs moet een niet-negatief getal zijn.", parent=self
+                "Validatie", i18n.t("filament.validation_price"), parent=self
             )
             return
 
@@ -197,7 +197,7 @@ class FilamentDialog(tk.Toplevel):
         self._sm = settings_manager
         self._parent = parent
 
-        self.title("Filamentprofielen")
+        self.title(get_i18n().t("filament.title"))
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -220,6 +220,7 @@ class FilamentDialog(tk.Toplevel):
     # ------------------------------------------------------------------
 
     def _build_ui(self) -> None:
+        i18n = get_i18n()
         outer = ttk.Frame(self, padding=12)
         outer.pack(fill=tk.BOTH, expand=True)
 
@@ -243,13 +244,13 @@ class FilamentDialog(tk.Toplevel):
         btn_frame = ttk.Frame(outer, padding=(12, 0, 0, 0))
         btn_frame.pack(side=tk.LEFT, fill=tk.Y)
 
-        ttk.Button(btn_frame, text="Toevoegen", command=self._add, width=12).pack(
+        ttk.Button(btn_frame, text=i18n.t("filament.add"), command=self._add, width=12).pack(
             pady=(0, 6)
         )
-        ttk.Button(btn_frame, text="Bewerken", command=self._edit, width=12).pack(
+        ttk.Button(btn_frame, text=i18n.t("filament.edit"), command=self._edit, width=12).pack(
             pady=(0, 6)
         )
-        ttk.Button(btn_frame, text="Verwijderen", command=self._delete, width=12).pack()
+        ttk.Button(btn_frame, text=i18n.t("filament.delete"), command=self._delete, width=12).pack()
 
     # ------------------------------------------------------------------
     # Lijst beheer
@@ -284,7 +285,7 @@ class FilamentDialog(tk.Toplevel):
         """Open het formulier voor het bewerken van het geselecteerde profiel."""
         idx = self._selected_index()
         if idx is None:
-            messagebox.showinfo("Bewerken", "Selecteer eerst een profiel.", parent=self)
+            messagebox.showinfo(get_i18n().t("filament.edit"), get_i18n().t("filament.select_first"), parent=self)
             return
 
         profiles = list(self._sm.get().filament_profiles)
@@ -297,16 +298,17 @@ class FilamentDialog(tk.Toplevel):
 
     def _delete(self) -> None:
         """Verwijder het geselecteerde profiel."""
+        i18n = get_i18n()
         idx = self._selected_index()
         if idx is None:
-            messagebox.showinfo("Verwijderen", "Selecteer eerst een profiel.", parent=self)
+            messagebox.showinfo(i18n.t("filament.delete"), i18n.t("filament.select_first"), parent=self)
             return
 
         profiles = list(self._sm.get().filament_profiles)
         profile = profiles[idx]
         confirm = messagebox.askyesno(
-            "Verwijderen",
-            f"Weet je zeker dat je '{profile.name}' wilt verwijderen?",
+            i18n.t("filament.delete"),
+            i18n.t("filament.confirm_delete", name=profile.name),
             parent=self,
         )
         if confirm:

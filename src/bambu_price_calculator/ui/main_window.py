@@ -11,7 +11,7 @@ from typing import Callable
 
 import sv_ttk
 
-from bambu_price_calculator.core.i18n_manager import I18nManager
+from bambu_price_calculator.core.i18n_manager import I18nManager, get_i18n
 from bambu_price_calculator.core.price_calculator import CalculationResult
 from bambu_price_calculator.core.settings_manager import SettingsManager
 from bambu_price_calculator.platform.dwm import set_titlebar_color
@@ -148,16 +148,16 @@ class MainWindow:
             d.line([(c, 7), (c, 7)], fill="#aaa", width=2)
             d.line([(c, 10), (c, s-5)], fill="#aaa", width=2)
 
-        for img, tip, cmd in [
-            (_icon(_info), "Over PandaPrice", lambda: self.on_about and self.on_about()),
-            (_icon(_refresh), "Controleer op updates", lambda: self.on_check_update and self.on_check_update()),
-            (_icon(_list), "Geschiedenis", lambda: self.on_open_history and self.on_open_history()),
-            (_icon(_spool), "Filamentprofielen", lambda: self.on_open_filaments and self.on_open_filaments()),
-            (_icon(_gear), "Instellingen", lambda: self.on_open_settings and self.on_open_settings()),
+        for img, tip_key, cmd in [
+            (_icon(_info), "toolbar.about", lambda: self.on_about and self.on_about()),
+            (_icon(_refresh), "toolbar.update", lambda: self.on_check_update and self.on_check_update()),
+            (_icon(_list), "toolbar.history", lambda: self.on_open_history and self.on_open_history()),
+            (_icon(_spool), "toolbar.filaments", lambda: self.on_open_filaments and self.on_open_filaments()),
+            (_icon(_gear), "toolbar.settings", lambda: self.on_open_settings and self.on_open_settings()),
         ]:
             b = ttk.Button(toolbar, image=img, style=btn_style, command=cmd)
             b.pack(side=tk.RIGHT, padx=2)
-            _Tooltip(b, tip)
+            _Tooltip(b, self._i18n.t(tip_key))
 
         ttk.Separator(self._root, orient=tk.HORIZONTAL).pack(fill=tk.X)
 
@@ -190,7 +190,7 @@ class MainWindow:
         self._plate_nav = plate_nav
 
         self._placeholder = ttk.Label(
-            self._card_container, text="Wachten op G-code...",
+            self._card_container, text=self._i18n.t("app.waiting"),
             font=("Segoe UI", 10), foreground=TEXT_SECONDARY)
         self._placeholder.pack(anchor=tk.CENTER, pady=40)
 
@@ -316,7 +316,7 @@ class MainWindow:
             price=f"€ {total_price:.2f}",
             time_str=time_display,
             weight_str=f"{total_weight:.1f}g",
-            object_name=f"Totaal ({len(real_plates)} plates)",
+            object_name=get_i18n().t("result.total_plates", count=len(real_plates)),
             thumbnail_data=real_plates[0].get("thumbnail_data", b""),
             filament_items=merged_list if merged_list else None,
             details=total_details if total_details else None,
@@ -398,7 +398,7 @@ class MainWindow:
 
     def set_status(self, text: str, is_error: bool = False) -> None:
         if is_error:
-            self._status_label.config(text="Inactief", foreground="#E74C3C")
+            self._status_label.config(text=self._i18n.t("app.status_inactive"), foreground="#E74C3C")
             if self._status_tooltip:
                 self._status_tooltip._text = text
             else:
@@ -409,7 +409,7 @@ class MainWindow:
 
     def set_watch_active(self, active: bool) -> None:
         if active:
-            self._status_label.config(text="Actief", foreground=BAMBU_GREEN)
+            self._status_label.config(text=self._i18n.t("app.status_active"), foreground=BAMBU_GREEN)
             self._status_tooltip = None
         else:
             self._status_label.config(text="", foreground=TEXT_SECONDARY)

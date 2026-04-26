@@ -10,6 +10,8 @@ import threading
 import tkinter as tk
 from typing import Callable
 
+from bambu_price_calculator.core.i18n_manager import get_i18n
+
 BAMBU_GREEN = "#00ae42"
 
 
@@ -85,37 +87,38 @@ class TrayIcon:
 
         image = _create_icon_image()
 
+        i18n = get_i18n()
         menu = Menu(
             MenuItem(
-                "Openen",
+                i18n.t("tray.open"),
                 self._on_show_clicked,
                 default=True,
             ),
             Menu.SEPARATOR,
             MenuItem(
-                "Instellingen",
+                i18n.t("tray.settings"),
                 self._on_settings_clicked,
             ),
             MenuItem(
-                "Filamentprofielen",
+                i18n.t("tray.filaments"),
                 self._on_filaments_clicked,
             ),
             MenuItem(
-                "Geschiedenis",
+                i18n.t("tray.history"),
                 self._on_history_clicked,
             ),
             Menu.SEPARATOR,
             MenuItem(
-                "Controleer op updates",
+                i18n.t("tray.update"),
                 self._on_update_clicked,
             ),
             MenuItem(
-                "Over PandaPrice",
+                i18n.t("tray.about"),
                 self._on_about_clicked,
             ),
             Menu.SEPARATOR,
             MenuItem(
-                "Afsluiten",
+                i18n.t("tray.quit"),
                 self._on_quit_clicked,
             ),
         )

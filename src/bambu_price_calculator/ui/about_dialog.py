@@ -6,6 +6,8 @@ import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
 
+from bambu_price_calculator.core.i18n_manager import get_i18n
+
 BAMBU_GREEN = "#00AE42"
 
 
@@ -14,7 +16,8 @@ class AboutDialog(tk.Toplevel):
 
     def __init__(self, parent: tk.Tk) -> None:
         super().__init__(parent)
-        self.title("Over PandaPrice")
+        i18n = get_i18n()
+        self.title(i18n.t("about.title"))
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -51,14 +54,14 @@ class AboutDialog(tk.Toplevel):
             version = "0.1.0"
 
         ttk.Label(
-            frame, text=f"Versie {version}",
+            frame, text=i18n.t("about.version", version=version),
             font=("Segoe UI", 9), foreground="#888",
         ).pack(pady=(2, 12))
 
         # Beschrijving
         ttk.Label(
             frame,
-            text="Automatische prijsberekening voor\n3D-prints op basis van Bambu Studio gcode.",
+            text=i18n.t("about.description"),
             font=("Segoe UI", 9), justify=tk.CENTER,
         ).pack(pady=(0, 12))
 
@@ -70,7 +73,7 @@ class AboutDialog(tk.Toplevel):
         ).pack(pady=(0, 12))
 
         # Sluiten
-        ttk.Button(frame, text="Sluiten", command=self.destroy).pack()
+        ttk.Button(frame, text=i18n.t("about.close"), command=self.destroy).pack()
 
         self.update_idletasks()
         x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2

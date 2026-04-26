@@ -110,3 +110,14 @@ class I18nManager:
         except Exception:  # noqa: BLE001
             pass
         return "en"
+
+
+_instance: I18nManager | None = None
+
+
+def get_i18n() -> I18nManager:
+    """Return the global I18nManager singleton, creating it if needed."""
+    global _instance
+    if _instance is None:
+        _instance = I18nManager()
+    return _instance

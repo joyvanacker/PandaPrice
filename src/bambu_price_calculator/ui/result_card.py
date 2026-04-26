@@ -10,6 +10,8 @@ import io
 import tkinter as tk
 from tkinter import ttk
 
+from bambu_price_calculator.core.i18n_manager import get_i18n
+
 BAMBU_GREEN = "#00AE42"
 TEXT_SECONDARY = "#888888"
 
@@ -62,7 +64,7 @@ class ResultCard(ttk.Frame):
         ).pack(anchor=tk.W, pady=(2, 6))
 
         ttk.Label(
-            info, text="TOTAALPRIJS",
+            info, text=get_i18n().t("result.total_price"),
             font=("Segoe UI", 10, "bold"), foreground=BAMBU_GREEN,
         ).pack(anchor=tk.W)
 
@@ -74,7 +76,7 @@ class ResultCard(ttk.Frame):
         # Filament breakdown
         if filament_items:
             ttk.Label(
-                self, text="FILAMENTEN",
+                self, text=get_i18n().t("result.filaments"),
                 font=("Segoe UI", 9, "bold"), foreground=TEXT_SECONDARY,
             ).pack(anchor=tk.W, pady=(8, 4))
 
@@ -102,7 +104,7 @@ class ResultCard(ttk.Frame):
         # Print details
         if details:
             ttk.Label(
-                self, text="PRINT DETAILS",
+                self, text=get_i18n().t("result.print_details"),
                 font=("Segoe UI", 9, "bold"), foreground=TEXT_SECONDARY,
             ).pack(anchor=tk.W, pady=(8, 4))
 

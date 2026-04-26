@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from bambu_price_calculator.core.settings_manager import SettingsManager
+from bambu_price_calculator.core.i18n_manager import get_i18n
 
 
 class HistoryView(tk.Toplevel):
@@ -20,13 +21,13 @@ class HistoryView(tk.Toplevel):
     """
 
     _COLUMNS = ("filename", "timestamp", "weight", "time", "filament", "price")
-    _HEADINGS = {
-        "filename": "Bestand",
-        "timestamp": "Datum",
-        "weight": "Gewicht (g)",
-        "time": "Tijd",
-        "filament": "Filament",
-        "price": "Prijs (€)",
+    _HEADING_KEYS = {
+        "filename": "history.col_file",
+        "timestamp": "history.col_date",
+        "weight": "history.col_weight",
+        "time": "history.col_time",
+        "filament": "history.col_filament",
+        "price": "history.col_price",
     }
     _WIDTHS = {
         "filename": 180,
@@ -45,7 +46,7 @@ class HistoryView(tk.Toplevel):
         super().__init__(parent)
         self._sm = settings_manager
 
-        self.title("Berekeningsgeschiedenis")
+        self.title(get_i18n().t("history.title"))
         self.resizable(True, True)
         self.transient(parent)
         self.grab_set()
@@ -68,6 +69,7 @@ class HistoryView(tk.Toplevel):
     # ------------------------------------------------------------------
 
     def _build_ui(self) -> None:
+        i18n = get_i18n()
         outer = ttk.Frame(self, padding=10)
         outer.pack(fill=tk.BOTH, expand=True)
 
@@ -90,7 +92,7 @@ class HistoryView(tk.Toplevel):
         hsb.config(command=self._tree.xview)
 
         for col in self._COLUMNS:
-            self._tree.heading(col, text=self._HEADINGS[col])
+            self._tree.heading(col, text=i18n.t(self._HEADING_KEYS[col]))
             self._tree.column(col, width=self._WIDTHS[col], minwidth=50)
 
         self._tree.grid(row=0, column=0, sticky=tk.NSEW)
@@ -105,11 +107,11 @@ class HistoryView(tk.Toplevel):
 
         ttk.Button(
             btn_frame,
-            text="Geschiedenis wissen",
+            text=i18n.t("history.clear"),
             command=self._clear_history,
         ).pack(side=tk.LEFT)
 
-        ttk.Button(btn_frame, text="Sluiten", command=self.destroy).pack(side=tk.RIGHT)
+        ttk.Button(btn_frame, text=i18n.t("history.close"), command=self.destroy).pack(side=tk.RIGHT)
 
     # ------------------------------------------------------------------
     # Data
@@ -160,10 +162,10 @@ class HistoryView(tk.Toplevel):
 
     def _clear_history(self) -> None:
         """Wis de volledige geschiedenis na bevestiging."""
+        i18n = get_i18n()
         confirm = messagebox.askyesno(
-            "Geschiedenis wissen",
-            "Weet je zeker dat je de volledige geschiedenis wilt wissen?\n"
-            "Deze actie kan niet ongedaan worden gemaakt.",
+            i18n.t("history.clear"),
+            i18n.t("history.clear_confirm"),
             parent=self,
         )
         if confirm:
