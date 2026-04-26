@@ -1,5 +1,11 @@
 # PandaPrice
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo-white.svg">
+  <source media="(prefers-color-scheme: light)" srcset="logo-black.svg">
+  <img alt="PandaPrice Logo" src="logo-black.svg">
+</picture>
+
 ![GitHub last commit](https://img.shields.io/github/last-commit/joyvanacker/PandaPrice?style=flat-square&color=2ecc71)
 ![GitHub top language](https://img.shields.io/github/languages/top/joyvanacker/PandaPrice?style=flat-square&color=3498db)
 ![GitHub license](https://img.shields.io/github/license/joyvanacker/PandaPrice?style=flat-square&color=f1c40f)
