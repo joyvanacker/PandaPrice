@@ -1,78 +1,92 @@
 # PandaPrice
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="logo-white.svg">
-  <source media="(prefers-color-scheme: light)" srcset="logo-black.svg">
-  <img alt="PandaPrice Logo" src="logo-black.svg">
-</picture>
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/bambu_price_calculator/assets/logo-white.svg">
+    <source media="(prefers-color-scheme: light)" srcset="src/bambu_price_calculator/assets/logo-black.svg">
+    <img alt="PandaPrice Logo" src="src/bambu_price_calculator/assets/logo-black.svg" width="200">
+  </picture>
 
-![GitHub last commit](https://img.shields.io/github/last-commit/joyvanacker/PandaPrice?style=flat-square&color=2ecc71)
-![GitHub top language](https://img.shields.io/github/languages/top/joyvanacker/PandaPrice?style=flat-square&color=3498db)
-![GitHub license](https://img.shields.io/github/license/joyvanacker/PandaPrice?style=flat-square&color=f1c40f)
+  ### **Automatic price calculator for 3D prints based on Bambu Studio gcode files.**
 
-Automatic price calculator for 3D prints based on Bambu Studio gcode files.
+  [![GitHub last commit](https://img.shields.io/github/last-commit/joyvanacker/PandaPrice?style=flat-square&color=2ecc71)](https://github.com/joyvanacker/PandaPrice/commits)
+  [![GitHub top language](https://img.shields.io/github/languages/top/joyvanacker/PandaPrice?style=flat-square&color=3498db)](https://github.com/joyvanacker/PandaPrice)
+  [![GitHub license](https://img.shields.io/github/license/joyvanacker/PandaPrice?style=flat-square&color=f1c40f)](https://github.com/joyvanacker/PandaPrice/blob/main/LICENSE)
 
-PandaPrice runs in the background, watches for new sliced files from Bambu Studio, and instantly calculates a sale price based on print time, filament usage, and your configured parameters. It supports multicolor prints, multiple plates, multiple Bambu Studio instances, and shows a 3D wireframe preview of each model.
+  ---
 
-## Features
+  *PandaPrice runs in the background, watches for new sliced files from Bambu Studio, and instantly calculates a sale price based on print time, filament usage, and your configured parameters.*
+</div>
 
-- Automatic gcode detection from Bambu Studio temp folder
-- Multicolor and multi-filament support with per-slot pricing
-- Multi-plate support with totals and per-plate navigation
-- Multiple Bambu Studio instance support with carousel navigation
-- 3D wireframe preview rendered from the model mesh
-- Automatic filament profile creation from gcode metadata
-- Simple and advanced pricing modes (energy, depreciation, labor, failure rate)
-- Print details: layer height, infill, volume, bounding box, nozzle size
-- System tray with rich toast notifications
-- Dark/light/system theme with Bambu Studio-inspired design
-- Auto-update via GitHub Releases
-- Calculation history
-- Multilingual (English, Dutch)
+## ✨ Features
 
-## Requirements
+* **🔍 Smart Detection:** Automatic gcode detection from the Bambu Studio temp folder.
+* **🌈 Multicolor Support:** Multi-filament support with per-slot pricing and per-plate navigation.
+* **📦 Multi-Instance:** Support for multiple Bambu Studio instances with carousel navigation.
+* **🌐 3D Preview:** Real-time 3D wireframe preview rendered directly from the model mesh.
+* **💰 Dynamic Pricing:** * *Simple Mode:* Quick cost per hour and margins.
+    * *Advanced Mode:* Energy, depreciation, maintenance, labor, and failure rate.
+* **📋 Print Details:** Shows layer height, infill, volume, bounding box, and nozzle size.
+* **🔔 System Integration:** System tray support with rich toast notifications.
+* **🎨 Theme Support:** Dark, light, and system themes inspired by the Bambu Studio design.
+* **🔄 Auto-update:** Built-in update checker via GitHub Releases.
+* **🌍 Multilingual:** Fully localized in **English** and **Dutch**.
 
-- Windows 10 or newer
-- Python 3.11 or newer
+---
 
-## Installation
+## 🚀 Installation
 
-### Installer (recommended)
+### Installer (Recommended)
+Download the latest `PandaPrice-Setup.exe` from the [Releases page](https://github.com/joyvanacker/PandaPrice/releases) and run the installer.
 
-Download the latest `PandaPrice-Setup.exe` from the [Releases page](https://github.com/joyvanacker/PandaPrice/releases) and run it.
-
-### From source
+### From Source
+If you prefer to run it manually, ensure you have **Python 3.11+** installed:
 
 ```bash
+# Clone the repository
+git clone [https://github.com/joyvanacker/PandaPrice.git](https://github.com/joyvanacker/PandaPrice.git)
+cd PandaPrice
+```
+
+```bash
+# Install dependencies
 pip install -r requirements.txt
 pip install -e .
+```
+
+```bash
+# Run the application
 python -m bambu_price_calculator
 ```
 
-## Usage
+## 🛠️ Usage
 
-On first launch, PandaPrice automatically detects the Bambu Studio temp folder. If not found, you can set the path manually via Settings.
+1.  **First Launch:** PandaPrice automatically detects the Bambu Studio temp folder. If it fails, you can set the path manually in **Settings**.
+2.  **Monitoring:** Keep the app running (in the tray). When you slice a model in Bambu Studio, PandaPrice instantly calculates the price.
+3.  **Filament Profiles:** Profiles are auto-created from gcode metadata (brand, type, color, price). You can fine-tune these in the **Filament Profiles** dialog.
 
-The app watches for new gcode files in the background. When Bambu Studio slices a model, PandaPrice instantly calculates the price and shows it in the main window or as a toast notification if minimized to the system tray.
+---
 
-### Pricing
+## 📋 Requirements
 
-Simple mode: configure cost per hour, filament margin, and profit margin.
+* **OS:** Windows 10 or newer
+* **Python:** 3.11 or newer (for source installation)
 
-Advanced mode: break down costs into energy consumption, machine depreciation, maintenance, labor (prep + post-processing time), setup costs, and failure rate.
+---
 
-### Filament profiles
-
-Filament profiles are automatically created from gcode metadata (brand, material type, color, price per kg from Bambu Studio settings). You can edit profiles manually via the filament profiles dialog.
-
-## Auto-update
+## 🔄 Auto-update
 
 PandaPrice checks for updates on startup via the GitHub Releases API. When a newer version is available, it shows a dialog with release notes and offers to download and install the update.
 
-## License
+---
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+## 📄 License & Disclaimer
 
-## Disclaimer
+**License:** Distributed under the **MIT License**. See `LICENSE` for more information.
 
-PandaPrice is not affiliated with, endorsed by, or associated with Bambu Lab. "Bambu Studio" is a trademark of Bambu Lab. This is an independent open-source tool.
+**Disclaimer:** PandaPrice is not affiliated with, endorsed by, or associated with **Bambu Lab**. "Bambu Studio" is a trademark of Bambu Lab. This is an independent open-source tool.
+
+---
+<div align="center">
+  <sub>Built with ❤️ for the 3D printing community</sub>
+</div>
