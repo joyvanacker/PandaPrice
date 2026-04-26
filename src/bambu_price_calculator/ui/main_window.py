@@ -113,6 +113,9 @@ class MainWindow:
 
         btn_style = "Toolbutton"
         sz = 18
+        is_dark = self._resolve_sv_theme(self._sm.get().theme) == "dark"
+        clr = "#fff" if is_dark else "#555"
+        clr_accent = BAMBU_GREEN
 
         def _icon(fn) -> ImageTk.PhotoImage:
             img = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
@@ -123,30 +126,30 @@ class MainWindow:
 
         def _gear(d, s):
             c = s // 2
-            d.ellipse([2, 2, s-3, s-3], outline="#aaa", width=3)
-            d.ellipse([6, 6, s-7, s-7], fill=(0,0,0,0), outline="#aaa", width=1)
-            d.line([(c, 1), (c, s-2)], fill="#aaa", width=2)
-            d.line([(1, c), (s-2, c)], fill="#aaa", width=2)
+            d.ellipse([2, 2, s-3, s-3], outline=clr, width=3)
+            d.ellipse([6, 6, s-7, s-7], fill=(0,0,0,0), outline=clr, width=1)
+            d.line([(c, 1), (c, s-2)], fill=clr, width=2)
+            d.line([(1, c), (s-2, c)], fill=clr, width=2)
 
         def _spool(d, s):
             c = s // 2
-            d.rectangle([3, 1, s-4, s-2], outline=BAMBU_GREEN, width=2)
-            d.line([(5, c), (s-6, c)], fill=BAMBU_GREEN, width=1)
-            d.ellipse([c-2, c-2, c+2, c+2], outline=BAMBU_GREEN, width=1)
+            d.rectangle([3, 1, s-4, s-2], outline=clr_accent, width=2)
+            d.line([(5, c), (s-6, c)], fill=clr_accent, width=1)
+            d.ellipse([c-2, c-2, c+2, c+2], outline=clr_accent, width=1)
 
         def _list(d, s):
             for y in (4, 9, 14):
-                d.line([(3, y), (s-4, y)], fill="#aaa", width=1)
+                d.line([(3, y), (s-4, y)], fill=clr, width=1)
 
         def _refresh(d, s):
-            d.arc([3, 3, s-4, s-4], start=30, end=330, fill="#aaa", width=2)
-            d.polygon([(s-5, 3), (s-2, 7), (s-8, 7)], fill="#aaa")
+            d.arc([3, 3, s-4, s-4], start=30, end=330, fill=clr, width=2)
+            d.polygon([(s-5, 3), (s-2, 7), (s-8, 7)], fill=clr)
 
         def _info(d, s):
             c = s // 2
-            d.ellipse([2, 2, s-3, s-3], outline="#aaa", width=2)
-            d.line([(c, 7), (c, 7)], fill="#aaa", width=2)
-            d.line([(c, 10), (c, s-5)], fill="#aaa", width=2)
+            d.ellipse([2, 2, s-3, s-3], outline=clr, width=2)
+            d.line([(c, 7), (c, 7)], fill=clr, width=2)
+            d.line([(c, 10), (c, s-5)], fill=clr, width=2)
 
         for img, tip_key, cmd in [
             (_icon(_info), "toolbar.about", lambda: self.on_about and self.on_about()),
